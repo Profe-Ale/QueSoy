@@ -195,7 +195,6 @@ const animales = [
     "Murciélago",
     "Rana",
     "Sapo",
-    "Salamandra",
     "Iguana",
     "Camaleón",
     "Lagarto",
