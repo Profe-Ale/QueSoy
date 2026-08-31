@@ -40,7 +40,7 @@ const btnNuevaPartida = document.getElementById("btnNuevaPartida");
 const btnVolverSala = document.getElementById("btnVolverSala");
 
 const turnoActualElemento = document.getElementById("turnoActual");
-const mensajeTurno = document.getElementById("mensajeTurno")
+const mensajeTurno = document.getElementById("mensajeTurno");
 const btnTerminarTurno = document.getElementById("btnTerminarTurno");
 const btnForzarTurno = document.getElementById("btnForzarTurno");
 const palabraTurno = document.getElementById("palabraTurno");
@@ -739,40 +739,64 @@ btnIniciarPartida.addEventListener("click", iniciarPartidaFirebase);
 // ==========================================
 
 function cargarPartida(sala) {
-    jugadores = sala.jugadores || {};
-    categoriaActual = sala.categoria || "numeros";
-    opcionesSeleccionadas = sala.opcionesSeleccionadas || [];
-    revelados = sala.revelados === true;
+
+    jugadores =
+        sala.jugadores || {};
+
+    categoriaActual =
+        sala.categoria || "numeros";
+
+    opcionesSeleccionadas =
+        sala.opcionesSeleccionadas || [];
+
+    revelados =
+        sala.revelados === true;
 
     if (rondaActual !== sala.ronda) {
-        rondaActual = sala.ronda;
+
+        rondaActual =
+            sala.ronda;
+
         tachadosLocales.clear();
     }
 
     actualizarTextosDeJuego();
+
+    // IMPORTANTE:
+    // primero mandamos a todos a la pantalla de juego
+    cambiarPantalla(
+        pantallaJuego
+    );
+
+    // después cargamos turnos y grilla
     mostrarTurnoActual(sala);
+
     mostrarGrilla();
 
-
-    const soyAnfitrion = sala.anfitrionId === jugadorActualId;
+    const soyAnfitrion =
+        sala.anfitrionId ===
+        jugadorActualId;
 
     btnRevelar.style.display =
-        soyAnfitrion ? "inline-block" : "none";
+        soyAnfitrion
+            ? "inline-block"
+            : "none";
 
     btnNuevaPartida.style.display =
-        soyAnfitrion ? "inline-block" : "none";
+        soyAnfitrion
+            ? "inline-block"
+            : "none";
 
     btnRevelar.textContent =
-        revelados ? "Elementos revelados" : "Revelar todos";
-    
+        revelados
+            ? "Elementos revelados"
+            : "Revelar todos";
+
     btnVolverSala.style.display =
-    soyAnfitrion && revelados
-        ? "inline-block"
-        : "none";
-
-    cambiarPantalla(pantallaJuego);
+        soyAnfitrion && revelados
+            ? "inline-block"
+            : "none";
 }
-
 
 // ==========================================
 // GRILLA
