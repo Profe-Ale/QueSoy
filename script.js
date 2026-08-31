@@ -31,7 +31,6 @@ const selectorCategoria = document.getElementById("selectorCategoria");
 const textoCategoria = document.getElementById("textoCategoria");
 
 const grillaNumeros = document.getElementById("grillaNumeros");
-const numeroSecretoElemento = document.getElementById("numeroSecreto");
 const tituloJuego = document.getElementById("tituloJuego");
 const textoSecreto = document.getElementById("textoSecreto");
 const tituloGrilla = document.getElementById("tituloGrilla");
@@ -754,12 +753,6 @@ function cargarPartida(sala) {
     mostrarTurnoActual(sala);
     mostrarGrilla();
 
-    const yo = jugadores[jugadorActualId];
-
-    numeroSecretoElemento.textContent =
-        revelados && yo
-            ? yo.elemento
-            : "???";
 
     const soyAnfitrion = sala.anfitrionId === jugadorActualId;
 
