@@ -31,7 +31,6 @@ const selectorCategoria = document.getElementById("selectorCategoria");
 const textoCategoria = document.getElementById("textoCategoria");
 
 const grillaNumeros = document.getElementById("grillaNumeros");
-const jugadoresPartida = document.getElementById("jugadoresPartida");
 const numeroSecretoElemento = document.getElementById("numeroSecreto");
 const tituloJuego = document.getElementById("tituloJuego");
 const textoSecreto = document.getElementById("textoSecreto");
@@ -753,7 +752,6 @@ function cargarPartida(sala) {
 
     actualizarTextosDeJuego();
     mostrarTurnoActual(sala);
-    mostrarJugadoresDurantePartida();
     mostrarGrilla();
 
     const yo = jugadores[jugadorActualId];
@@ -782,38 +780,6 @@ function cargarPartida(sala) {
     cambiarPantalla(pantallaJuego);
 }
 
-// ==========================================
-// MOSTRAR JUGADORES
-// ==========================================
-
-function mostrarJugadoresDurantePartida() {
-    jugadoresPartida.innerHTML = "";
-
-    Object.entries(jugadores).forEach(([id, jugador]) => {
-        const fila = document.createElement("div");
-        fila.classList.add("jugador");
-        if (id === jugadorTurnoActualId) {
-        fila.classList.add("jugador-turno");
-}
-
-        const nombre = document.createElement("span");
-        nombre.textContent = jugador.nombre;
-
-        const elemento = document.createElement("strong");
-
-        if (revelados) {
-            elemento.textContent = jugador.elemento;
-        } else if (id === jugadorActualId) {
-            elemento.textContent = "???";
-        } else {
-            elemento.textContent = jugador.elemento;
-        }
-
-        fila.appendChild(nombre);
-        fila.appendChild(elemento);
-        jugadoresPartida.appendChild(fila);
-    });
-}
 
 // ==========================================
 // GRILLA
