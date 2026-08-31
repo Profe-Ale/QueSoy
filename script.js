@@ -40,6 +40,13 @@ const tituloGrilla = document.getElementById("tituloGrilla");
 const btnRevelar = document.getElementById("btnRevelar");
 const btnNuevaPartida = document.getElementById("btnNuevaPartida");
 const btnVolverSala = document.getElementById("btnVolverSala");
+const turnoActualElemento = document.getElementById("turnoActual");
+
+const mensajeTurno = document.getElementById("mensajeTurno");
+
+const btnTerminarTurno = document.getElementById("btnTerminarTurno");
+
+const btnForzarTurno = document.getElementById("btnForzarTurno");
 
 // ==========================================
 // CATEGORÍAS
@@ -390,7 +397,7 @@ let revelados = false;
 let rondaActual = null;
 let categoriaActual = "numeros";
 let tachadosLocales = new Set();
-
+let jugadorTurnoActualId = null;
 // ==========================================
 // UTILIDADES
 // ==========================================
@@ -691,6 +698,8 @@ async function iniciarPartidaFirebase() {
 
         const jugadoresSala = sala.jugadores || {};
         const listaJugadores = Object.entries(jugadoresSala);
+        const ordenTurnos = mezclarArray(listaJugadores.map(([id]) => id)
+    );
 
         if (listaJugadores.length < 2) {
             alert("Necesitás al menos 2 jugadores.");
@@ -710,8 +719,10 @@ async function iniciarPartidaFirebase() {
             estado: "jugando",
             opcionesSeleccionadas: opciones,
             revelados: false,
-            ronda: Date.now()
-        };
+            ronda: Date.now(),
+            ordenTurnos: ordenTurnos,
+            turnoActual: 0
+};
 
         listaJugadores.forEach(([id], indice) => {
             cambios[`jugadores/${id}/elemento`] = opcionesJugadores[indice];
@@ -743,6 +754,7 @@ function cargarPartida(sala) {
     }
 
     actualizarTextosDeJuego();
+    mostrarTurnoActual(sala);
     mostrarJugadoresDurantePartida();
     mostrarGrilla();
 
@@ -782,6 +794,9 @@ function mostrarJugadoresDurantePartida() {
     Object.entries(jugadores).forEach(([id, jugador]) => {
         const fila = document.createElement("div");
         fila.classList.add("jugador");
+        if (id === jugadorTurnoActualId) {
+        fila.classList.add("jugador-turno");
+}
 
         const nombre = document.createElement("span");
         nombre.textContent = jugador.nombre;
@@ -915,6 +930,7 @@ async function nuevaPartidaFirebase() {
         }
 
         const listaJugadores = Object.entries(sala.jugadores || {});
+        const nuevoOrdenTurnos = mezclarArray(listaJugadores.map(([id]) => id));
         const categoria = sala.categoria || "numeros";
 
         const nuevasOpciones = generar50Opciones(categoria);
@@ -924,7 +940,9 @@ async function nuevaPartidaFirebase() {
             estado: "jugando",
             opcionesSeleccionadas: nuevasOpciones,
             revelados: false,
-            ronda: Date.now()
+            ronda: Date.now(),
+            ordenTurnos: nuevoOrdenTurnos,
+            turnoActual: 0
         };
 
         listaJugadores.forEach(([id], indice) => {
@@ -1026,6 +1044,232 @@ btnVolverSala.addEventListener(
 
             alert(
                 "No se pudo volver a la sala de espera."
+            );
+        }
+    }
+);
+function mostrarTurnoActual(sala) {
+
+    const orden =
+        sala.ordenTurnos || [];
+
+    const indice =
+        sala.turnoActual || 0;
+
+
+    if (orden.length === 0) {
+
+        turnoActualElemento.textContent =
+            "Sin turno";
+
+        mensajeTurno.textContent = "";
+
+        jugadorTurnoActualId = null;
+
+        return;
+    }
+
+
+    const idTurno =
+        orden[indice];
+
+
+    const jugador =
+        jugadores[idTurno];
+
+
+    if (!jugador) {
+
+        turnoActualElemento.textContent =
+            "Esperando...";
+
+        return;
+    }
+
+
+    jugadorTurnoActualId =
+        idTurno;
+
+
+    turnoActualElemento.textContent =
+        `🎤 Turno de: ${jugador.nombre}`;
+
+
+    const esMiTurno =
+        idTurno === jugadorActualId;
+
+
+    const soyAnfitrion =
+        sala.anfitrionId ===
+        jugadorActualId;
+
+
+    if (esMiTurno) {
+
+        mensajeTurno.textContent =
+            "Hacé tu pregunta y después terminá tu turno.";
+
+    } else {
+
+        mensajeTurno.textContent =
+            `Esperando a que ${jugador.nombre} termine su turno...`;
+
+    }
+
+
+    // Solo el jugador actual
+    // puede terminar su turno
+    btnTerminarTurno.style.display =
+        esMiTurno && !revelados
+            ? "inline-block"
+            : "none";
+
+
+    // El anfitrión puede forzar
+    // el siguiente turno
+    btnForzarTurno.style.display =
+        soyAnfitrion && !revelados
+            ? "inline-block"
+            : "none";
+}
+btnTerminarTurno.addEventListener(
+    "click",
+    async () => {
+
+        try {
+
+            const salaRef =
+                ref(
+                    database,
+                    `salas/${codigoActual}`
+                );
+
+            const snapshot =
+                await get(salaRef);
+
+            if (!snapshot.exists()) {
+                return;
+            }
+
+            const sala =
+                snapshot.val();
+
+
+            const orden =
+                sala.ordenTurnos || [];
+
+            const indice =
+                sala.turnoActual || 0;
+
+
+            if (orden.length === 0) {
+                return;
+            }
+
+
+            // Comprobamos que realmente
+            // sea el turno de esta persona
+            if (
+                orden[indice] !==
+                jugadorActualId
+            ) {
+
+                alert(
+                    "Todavía no es tu turno."
+                );
+
+                return;
+            }
+
+
+            const siguiente =
+                (indice + 1) %
+                orden.length;
+
+
+            await update(
+                salaRef,
+                {
+                    turnoActual:
+                        siguiente
+                }
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Error pasando turno:",
+                error
+            );
+        }
+    }
+);
+btnForzarTurno.addEventListener(
+    "click",
+    async () => {
+
+        try {
+
+            const salaRef =
+                ref(
+                    database,
+                    `salas/${codigoActual}`
+                );
+
+            const snapshot =
+                await get(salaRef);
+
+            if (!snapshot.exists()) {
+                return;
+            }
+
+            const sala =
+                snapshot.val();
+
+
+            if (
+                sala.anfitrionId !==
+                jugadorActualId
+            ) {
+
+                alert(
+                    "Solo el anfitrión puede forzar el turno."
+                );
+
+                return;
+            }
+
+
+            const orden =
+                sala.ordenTurnos || [];
+
+            const indice =
+                sala.turnoActual || 0;
+
+
+            if (orden.length === 0) {
+                return;
+            }
+
+
+            const siguiente =
+                (indice + 1) %
+                orden.length;
+
+
+            await update(
+                salaRef,
+                {
+                    turnoActual:
+                        siguiente
+                }
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Error forzando turno:",
+                error
             );
         }
     }
