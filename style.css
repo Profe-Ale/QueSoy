@@ -1,0 +1,205 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #121212;
+  color: #f1f1f1;
+  min-height: 100vh;
+}
+
+.contenedor {
+  width: min(1000px, 92%);
+  margin: 30px auto;
+}
+
+.pantalla {
+  display: none;
+}
+
+.pantalla.activa {
+  display: block;
+}
+
+h1,
+h2 {
+  text-align: center;
+}
+
+h1 {
+  font-size: 2.5rem;
+}
+
+.panel {
+  background: #1e1e1e;
+  padding: 25px;
+  border-radius: 16px;
+  margin: 20px 0;
+  text-align: center;
+  border: 1px solid #333;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.4);
+}
+
+input,
+select {
+  display: block;
+  width: min(400px, 100%);
+  margin: 12px auto;
+  padding: 14px;
+  font-size: 1rem;
+  background: #292929;
+  color: white;
+  border: 2px solid #444;
+  border-radius: 10px;
+}
+
+select {
+  cursor: pointer;
+}
+
+input::placeholder {
+  color: #999;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #888;
+}
+
+select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 12px 20px;
+  margin: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  background: #333;
+  color: white;
+  transition: 0.2s;
+}
+
+button:hover {
+  background: #444;
+  transform: translateY(-2px);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.codigo-sala {
+  font-size: 2.5rem;
+  font-weight: bold;
+  letter-spacing: 8px;
+  margin: 15px 0;
+}
+
+.jugador {
+  background: #292929;
+  padding: 13px;
+  margin: 8px 0;
+  border-radius: 10px;
+  border: 1px solid #3a3a3a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.jugador strong {
+  text-align: right;
+}
+
+.numero-secreto {
+  font-size: clamp(2rem, 6vw, 4rem);
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+
+.grilla {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.numero {
+  background: #222;
+  color: white;
+  border: 2px solid #444;
+  border-radius: 10px;
+  padding: 14px 8px;
+  min-height: 56px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-wrap: anywhere;
+}
+
+.numero:hover {
+  background: #333;
+  transform: translateY(-2px);
+}
+
+.numero.tachado {
+  background: #161616;
+  color: #666;
+  opacity: 0.45;
+  text-decoration: line-through;
+  transform: scale(0.96);
+}
+
+.ayuda {
+  text-align: center;
+  color: #aaa;
+}
+
+.controles-finales {
+  margin-top: 30px;
+}
+
+.numero-otro-jugador {
+  background: #5c3d00;
+  border: 2px solid #ffb300;
+  color: #ffd76a;
+  text-decoration: line-through;
+  box-shadow: 0 0 10px rgba(255, 179, 0, 0.45);
+  opacity: 0.8;
+  transform: scale(0.96);
+}
+
+@media (min-width: 850px) {
+  .grilla {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  .codigo-sala {
+    font-size: 2rem;
+  }
+
+  .grilla {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
