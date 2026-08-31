@@ -698,8 +698,7 @@ async function iniciarPartidaFirebase() {
 
         const jugadoresSala = sala.jugadores || {};
         const listaJugadores = Object.entries(jugadoresSala);
-        const ordenTurnos = mezclarArray(listaJugadores.map(([id]) => id)
-    );
+        const ordenTurnos = mezclarArray(listaJugadores.map(([id]) => id));
 
         if (listaJugadores.length < 2) {
             alert("Necesitás al menos 2 jugadores.");
