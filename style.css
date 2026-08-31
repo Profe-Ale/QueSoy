@@ -220,3 +220,10 @@ button:disabled {
 
   transform: scale(1.02);
 }
+.palabra-turno {
+  font-size: 3rem;
+  font-weight: bold;
+  margin: 18px 0;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
