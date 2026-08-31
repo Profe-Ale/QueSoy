@@ -32,7 +32,6 @@ const textoCategoria = document.getElementById("textoCategoria");
 
 const grillaNumeros = document.getElementById("grillaNumeros");
 const tituloJuego = document.getElementById("tituloJuego");
-const textoSecreto = document.getElementById("textoSecreto");
 const tituloGrilla = document.getElementById("tituloGrilla");
 
 const btnRevelar = document.getElementById("btnRevelar");
@@ -441,11 +440,14 @@ function generar50Opciones(categoria) {
 }
 
 function actualizarTextosDeJuego() {
-    const datos = categorias[categoriaActual] || categorias.numeros;
 
-    tituloJuego.textContent = datos.titulo;
-    textoSecreto.textContent = datos.secreto;
-    tituloGrilla.textContent = datos.grilla;
+    const datos =
+        categorias[categoriaActual] || 
+        categorias.numeros;
+
+        tituloJuego.textContent = datos.titulo;
+
+        tituloGrilla.textContent = datos.grilla;
 }
 
 // ==========================================
@@ -752,6 +754,7 @@ function cargarPartida(sala) {
     revelados =
         sala.revelados === true;
 
+
     if (rondaActual !== sala.ronda) {
 
         rondaActual =
@@ -760,44 +763,51 @@ function cargarPartida(sala) {
         tachadosLocales.clear();
     }
 
+
+    // Primero entramos a la pantalla
+    cambiarPantalla(pantallaJuego);
+
+
+    // Actualizamos los textos
     actualizarTextosDeJuego();
 
-    // IMPORTANTE:
-    // primero mandamos a todos a la pantalla de juego
-    cambiarPantalla(
-        pantallaJuego
-    );
 
-    // después cargamos turnos y grilla
+    // Mostramos turno y palabra
     mostrarTurnoActual(sala);
 
+
+    // Mostramos grilla
     mostrarGrilla();
+
 
     const soyAnfitrion =
         sala.anfitrionId ===
         jugadorActualId;
+
 
     btnRevelar.style.display =
         soyAnfitrion
             ? "inline-block"
             : "none";
 
+
     btnNuevaPartida.style.display =
         soyAnfitrion
             ? "inline-block"
             : "none";
+
 
     btnRevelar.textContent =
         revelados
             ? "Elementos revelados"
             : "Revelar todos";
 
+
     btnVolverSala.style.display =
         soyAnfitrion && revelados
             ? "inline-block"
             : "none";
 }
-
 // ==========================================
 // GRILLA
 // ==========================================
@@ -1035,22 +1045,32 @@ function mostrarTurnoActual(sala) {
         sala.ordenTurnos || [];
 
     const indice =
-        sala.turnoActual || 0;
+        sala.turnoActual ?? 0;
 
 
+    // Si todavía no existen turnos
     if (orden.length === 0) {
 
-    turnoActualElemento.textContent =
-        "Sin turno";
+        turnoActualElemento.textContent =
+            "Sin turno";
 
-    palabraTurno.textContent = "???";
+        palabraTurno.textContent =
+            "???";
 
-    mensajeTurno.textContent = "";
+        mensajeTurno.textContent =
+            "";
 
-    jugadorTurnoActualId = null;
+        jugadorTurnoActualId =
+            null;
 
-    return;
-}
+        btnTerminarTurno.style.display =
+            "none";
+
+        btnForzarTurno.style.display =
+            "none";
+
+        return;
+    }
 
 
     const idTurno =
@@ -1061,10 +1081,24 @@ function mostrarTurnoActual(sala) {
         jugadores[idTurno];
 
 
+    // Si por algún motivo el jugador
+    // todavía no se cargó
     if (!jugador) {
 
         turnoActualElemento.textContent =
             "Esperando...";
+
+        palabraTurno.textContent =
+            "???";
+
+        mensajeTurno.textContent =
+            "";
+
+        btnTerminarTurno.style.display =
+            "none";
+
+        btnForzarTurno.style.display =
+            "none";
 
         return;
     }
@@ -1074,6 +1108,7 @@ function mostrarTurnoActual(sala) {
         idTurno;
 
 
+    // Nombre de quien pregunta
     turnoActualElemento.textContent =
         `🎤 Turno de: ${jugador.nombre}`;
 
@@ -1087,6 +1122,36 @@ function mostrarTurnoActual(sala) {
         jugadorActualId;
 
 
+    // ======================================
+    // PALABRA DEL JUGADOR
+    // ======================================
+
+    // El jugador NO puede ver
+    // su propia palabra.
+    //
+    // Después de revelar sí la puede ver.
+
+    if (revelados) {
+
+        palabraTurno.textContent =
+            jugador.elemento || "???";
+
+    } else if (esMiTurno) {
+
+        palabraTurno.textContent =
+            "???";
+
+    } else {
+
+        palabraTurno.textContent =
+            jugador.elemento || "???";
+    }
+
+
+    // ======================================
+    // MENSAJE
+    // ======================================
+
     if (esMiTurno) {
 
         mensajeTurno.textContent =
@@ -1096,30 +1161,33 @@ function mostrarTurnoActual(sala) {
 
         mensajeTurno.textContent =
             `Esperando a que ${jugador.nombre} termine su turno...`;
-
     }
 
 
-    // Solo el jugador actual
-    // puede terminar su turno
+    // ======================================
+    // BOTONES
+    // ======================================
+
+    // Solo quien tiene el turno
+    // puede terminarlo.
     btnTerminarTurno.style.display =
         esMiTurno && !revelados
             ? "inline-block"
             : "none";
 
 
-    // El anfitrión puede forzar
-    // el siguiente turno
+    // El anfitrión siempre puede
+    // forzar el siguiente turno.
     btnForzarTurno.style.display =
         soyAnfitrion && !revelados
             ? "inline-block"
             : "none";
 }
-btnTerminarTurno.addEventListener(
-    "click",
-    async () => {
+    btnTerminarTurno.addEventListener(
+        "click",
+            async () => {
 
-        try {
+            try {
 
             const salaRef =
                 ref(
