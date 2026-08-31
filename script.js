@@ -40,13 +40,12 @@ const tituloGrilla = document.getElementById("tituloGrilla");
 const btnRevelar = document.getElementById("btnRevelar");
 const btnNuevaPartida = document.getElementById("btnNuevaPartida");
 const btnVolverSala = document.getElementById("btnVolverSala");
+
 const turnoActualElemento = document.getElementById("turnoActual");
-
-const mensajeTurno = document.getElementById("mensajeTurno");
-
+const mensajeTurno = document.getElementById("mensajeTurno")
 const btnTerminarTurno = document.getElementById("btnTerminarTurno");
-
 const btnForzarTurno = document.getElementById("btnForzarTurno");
+const palabraTurno = document.getElementById("palabraTurno");
 
 // ==========================================
 // CATEGORÍAS
@@ -1058,15 +1057,17 @@ function mostrarTurnoActual(sala) {
 
     if (orden.length === 0) {
 
-        turnoActualElemento.textContent =
-            "Sin turno";
+    turnoActualElemento.textContent =
+        "Sin turno";
 
-        mensajeTurno.textContent = "";
+    palabraTurno.textContent = "???";
 
-        jugadorTurnoActualId = null;
+    mensajeTurno.textContent = "";
 
-        return;
-    }
+    jugadorTurnoActualId = null;
+
+    return;
+}
 
 
     const idTurno =
