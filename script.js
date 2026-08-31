@@ -376,6 +376,7 @@ const categorias = {
         secreto: "Tu animal secreto es:",
         grilla: "Animales posibles",
         opciones: animales
+    }
 };
 
 // ==========================================
