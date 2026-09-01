@@ -1081,8 +1081,6 @@ function mostrarTurnoActual(sala) {
         btnForzarTurno.style.display =
             "none";
 
-        return;
-    }
         // ======================================
     // FINAL DE LAS 5 RONDAS
     // ======================================
