@@ -1133,25 +1133,34 @@ function mostrarTurnoActual(sala) {
 
 if (revelados) {
 
-    // Cada computadora busca SU propio jugador
     const miJugador = jugadores[jugadorActualId];
 
-    if (miJugador && miJugador.elemento) {
+    let textoRevelado = "🎉 ¡Tu elemento era!";
 
-        turnoActualElemento.textContent =
-            "🎉 ¡Tu componente/profesión era!";
-
-        palabraTurno.textContent =
-            miJugador.elemento;
-
-    } else {
-
-        palabraTurno.textContent = "???";
+    if (categoriaActual === "numeros") {
+        textoRevelado = "🎉 ¡Tu número era!";
     }
+
+    if (categoriaActual === "objetos") {
+        textoRevelado = "🎉 ¡Tu objeto era!";
+    }
+
+    if (categoriaActual === "profesiones") {
+        textoRevelado = "🎉 ¡Tu profesión era!";
+    }
+
+    if (categoriaActual === "animales") {
+        textoRevelado = "🎉 ¡Tu animal era!";
+    }
+
+    turnoActualElemento.textContent =
+        textoRevelado;
+
+    palabraTurno.textContent =
+        miJugador?.elemento || "???";
 
 } else {
 
-    // Durante la partida funciona como siempre
     if (esMiTurno) {
 
         palabraTurno.textContent = "???";
