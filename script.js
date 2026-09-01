@@ -1131,30 +1131,37 @@ function mostrarTurnoActual(sala) {
     //
     // Después de revelar sí la puede ver.
 
-   if (revelados) {
+if (revelados) {
 
-    // Al revelar, cada PC muestra
-    // el componente de SU jugador
+    // Cada computadora busca SU propio jugador
     const miJugador = jugadores[jugadorActualId];
 
-    palabraTurno.textContent =
-        miJugador?.elemento || "???";
+    if (miJugador && miJugador.elemento) {
 
-} else if (esMiTurno) {
+        turnoActualElemento.textContent =
+            "🎉 ¡Tu componente/profesión era!";
 
-    // Durante su turno no puede
-    // ver su propio componente
-    palabraTurno.textContent =
-        "???";
+        palabraTurno.textContent =
+            miJugador.elemento;
+
+    } else {
+
+        palabraTurno.textContent = "???";
+    }
 
 } else {
 
-    // Si es el turno de otra persona,
-    // sí puede ver su componente
-    palabraTurno.textContent =
-        jugador.elemento || "???";
-}
+    // Durante la partida funciona como siempre
+    if (esMiTurno) {
 
+        palabraTurno.textContent = "???";
+
+    } else {
+
+        palabraTurno.textContent =
+            jugador.elemento || "???";
+    }
+}
     // ======================================
     // MENSAJE
     // ======================================
