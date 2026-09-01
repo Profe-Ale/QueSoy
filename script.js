@@ -1062,7 +1062,16 @@ function mostrarTurnoActual(sala) {
     const rondasTerminadas =
         sala.rondasTerminadas === true;
 
-    contadorRonda.textContent = `Ronda ${rondaNumero} de 5`;
+    if (rondaNumero === 6) {
+
+    contadorRonda.textContent =
+        "🎯 Ronda final: Arriesgar";
+
+} else {
+
+    contadorRonda.textContent =
+        `Ronda ${rondaNumero} de 5`;
+}
     // Si todavía no existen turnos
     if (orden.length === 0) {
 
@@ -1215,6 +1224,21 @@ if (revelados) {
     // MENSAJE
     // ======================================
 
+    if (rondaNumero === 6) {
+
+    if (esMiTurno) {
+
+        mensajeTurno.textContent =
+            "🎯 Arriesgá qué creés que sos y después terminá tu turno.";
+
+    } else {
+
+        mensajeTurno.textContent =
+            `🎯 ${jugador.nombre} está arriesgando su respuesta...`;
+    }
+
+} else {
+
     if (esMiTurno) {
 
         mensajeTurno.textContent =
@@ -1225,6 +1249,7 @@ if (revelados) {
         mensajeTurno.textContent =
             `Esperando a que ${jugador.nombre} termine su turno...`;
     }
+}
 
 
     // ======================================
@@ -1308,7 +1333,7 @@ let rondasTerminadas = false;
 if (siguiente >= orden.length) {
 
     // Si acaba de terminar la ronda 5
-    if (rondaNumero >= 5) {
+    if (rondaNumero >= 6) {
 
         rondasTerminadas = true;
 
@@ -1402,7 +1427,7 @@ btnForzarTurno.addEventListener(
 
             if (siguiente >= orden.length) {
     
-            if (rondaNumero >= 5) {
+            if (rondaNumero >= 6) {
 
             rondasTerminadas = true;
 
