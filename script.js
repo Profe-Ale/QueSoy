@@ -718,10 +718,14 @@ async function iniciarPartidaFirebase() {
             opcionesSeleccionadas: opciones,
             revelados: false,
             ronda: Date.now(),
+
+  // RONDAS
+            rondaNumero: 1,
+            rondasTerminadas: false,
+            
             ordenTurnos: ordenTurnos,
             turnoActual: 0
 };
-
         listaJugadores.forEach(([id], indice) => {
             cambios[`jugadores/${id}/elemento`] = opcionesJugadores[indice];
         });
@@ -932,9 +936,13 @@ async function nuevaPartidaFirebase() {
             opcionesSeleccionadas: nuevasOpciones,
             revelados: false,
             ronda: Date.now(),
+
+            rondaNumero: 1,
+            rondasTerminadas: false,
+
             ordenTurnos: nuevoOrdenTurnos,
             turnoActual: 0
-        };
+};
 
         listaJugadores.forEach(([id], indice) => {
             cambios[`jugadores/${id}/elemento`] = opcionesJugadores[indice];
@@ -1047,7 +1055,11 @@ function mostrarTurnoActual(sala) {
     const indice =
         sala.turnoActual ?? 0;
 
+    const rondaNumero =
+        sala.rondaNumero || 1;
 
+    const rondasTerminadas =
+        sala.rondasTerminadas === true;
     // Si todavía no existen turnos
     if (orden.length === 0) {
 
@@ -1062,6 +1074,29 @@ function mostrarTurnoActual(sala) {
 
         jugadorTurnoActualId =
             null;
+
+        btnTerminarTurno.style.display =
+            "none";
+
+        btnForzarTurno.style.display =
+            "none";
+
+        return;
+    }
+        // ======================================
+    // FINAL DE LAS 5 RONDAS
+    // ======================================
+
+    if (rondasTerminadas && !revelados) {
+
+        turnoActualElemento.textContent =
+            "🏁 ¡Final de la partida!";
+
+        palabraTurno.textContent =
+            "5 rondas completadas";
+
+        mensajeTurno.textContent =
+            "El anfitrión ya puede revelar los resultados.";
 
         btnTerminarTurno.style.display =
             "none";
@@ -1256,18 +1291,44 @@ if (revelados) {
             }
 
 
-            const siguiente =
-                (indice + 1) %
-                orden.length;
+            let siguiente = indice + 1;
+
+let rondaNumero =
+    sala.rondaNumero || 1;
+
+let rondasTerminadas = false;
 
 
-            await update(
-                salaRef,
-                {
-                    turnoActual:
-                        siguiente
-                }
-            );
+// Si terminó el último jugador
+if (siguiente >= orden.length) {
+
+    // Si acaba de terminar la ronda 5
+    if (rondaNumero >= 5) {
+
+        rondasTerminadas = true;
+
+        // Dejamos el índice en el último jugador
+        siguiente = indice;
+
+    } else {
+
+        // Volvemos al primer jugador
+        siguiente = 0;
+
+        // Pasamos a la siguiente ronda
+        rondaNumero++;
+    }
+}
+
+
+        await update(
+            salaRef,
+     {
+        turnoActual: siguiente,
+        rondaNumero: rondaNumero,
+        rondasTerminadas: rondasTerminadas
+    }
+);
 
         } catch (error) {
 
@@ -1326,18 +1387,39 @@ btnForzarTurno.addEventListener(
             }
 
 
-            const siguiente =
-                (indice + 1) %
-                orden.length;
+           let siguiente = indice + 1;
+
+            let rondaNumero =
+            sala.rondaNumero || 1;
+
+            let rondasTerminadas = false;
 
 
-            await update(
-                salaRef,
-                {
-                    turnoActual:
-                        siguiente
-                }
-            );
+            if (siguiente >= orden.length) {
+    
+            if (rondaNumero >= 5) {
+
+            rondasTerminadas = true;
+
+            siguiente = indice;
+
+            } else {
+
+            siguiente = 0;
+
+            rondaNumero++;
+    }
+}
+
+
+await update(
+    salaRef,
+    {
+        turnoActual: siguiente,
+        rondaNumero: rondaNumero,
+        rondasTerminadas: rondasTerminadas
+    }
+);
 
         } catch (error) {
 
