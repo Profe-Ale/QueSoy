@@ -43,6 +43,7 @@ const mensajeTurno = document.getElementById("mensajeTurno");
 const btnTerminarTurno = document.getElementById("btnTerminarTurno");
 const btnForzarTurno = document.getElementById("btnForzarTurno");
 const palabraTurno = document.getElementById("palabraTurno");
+const contadorRonda = document.getElementById("contadorRonda");
 
 // ==========================================
 // CATEGORÍAS
@@ -1060,6 +1061,8 @@ function mostrarTurnoActual(sala) {
 
     const rondasTerminadas =
         sala.rondasTerminadas === true;
+
+    contadorRonda.textContent = `Ronda ${rondaNumero} de 5`;
     // Si todavía no existen turnos
     if (orden.length === 0) {
 
@@ -1080,6 +1083,8 @@ function mostrarTurnoActual(sala) {
 
         btnForzarTurno.style.display =
             "none";
+        return;
+    }
 
         // ======================================
     // FINAL DE LAS 5 RONDAS
@@ -1087,24 +1092,26 @@ function mostrarTurnoActual(sala) {
 
     if (rondasTerminadas && !revelados) {
 
-        turnoActualElemento.textContent =
-            "🏁 ¡Final de la partida!";
+    contadorRonda.textContent =
+        "5 de 5 rondas completadas";
 
-        palabraTurno.textContent =
-            "5 rondas completadas";
+    turnoActualElemento.textContent =
+        "🏁 ¡Final de la partida!";
 
-        mensajeTurno.textContent =
-            "El anfitrión ya puede revelar los resultados.";
+    palabraTurno.textContent =
+        "5 rondas completadas";
 
-        btnTerminarTurno.style.display =
-            "none";
+    mensajeTurno.textContent =
+        "El anfitrión ya puede revelar los resultados.";
 
-        btnForzarTurno.style.display =
-            "none";
+    btnTerminarTurno.style.display =
+        "none";
 
-        return;
-    }
+    btnForzarTurno.style.display =
+        "none";
 
+    return;
+}
 
     const idTurno =
         orden[indice];
