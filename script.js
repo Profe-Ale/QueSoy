@@ -45,6 +45,11 @@ const btnForzarTurno = document.getElementById("btnForzarTurno");
 const palabraTurno = document.getElementById("palabraTurno");
 const contadorRonda = document.getElementById("contadorRonda");
 
+const panelReconexion = document.getElementById("panelReconexion");
+const textoReconexion = document.getElementById("textoReconexion");
+const btnReconectar = document.getElementById("btnReconectar");
+const btnOlvidarSesion = document.getElementById("btnOlvidarSesion");
+
 // ==========================================
 // CATEGORÍAS
 // ==========================================
@@ -395,6 +400,100 @@ let rondaActual = null;
 let categoriaActual = "numeros";
 let tachadosLocales = new Set();
 let jugadorTurnoActualId = null;
+
+const CLAVE_SESION =
+    "queSoySesionActual";
+
+
+function guardarSesion(nombre) {
+
+    try {
+
+        const sesion = {
+            codigo: codigoActual,
+            jugadorId: jugadorActualId,
+            nombre: nombre
+        };
+
+        localStorage.setItem(
+            CLAVE_SESION,
+            JSON.stringify(sesion)
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "No se pudo guardar la sesión:",
+            error
+        );
+    }
+}
+
+
+function obtenerSesion() {
+
+    try {
+
+        const datos =
+            localStorage.getItem(
+                CLAVE_SESION
+            );
+
+        if (!datos) {
+            return null;
+        }
+
+        return JSON.parse(datos);
+
+    } catch (error) {
+
+        console.warn(
+            "No se pudo leer la sesión:",
+            error
+        );
+
+        return null;
+    }
+}
+
+
+function borrarSesion() {
+
+    try {
+
+        localStorage.removeItem(
+            CLAVE_SESION
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "No se pudo borrar la sesión:",
+            error
+        );
+    }
+}
+
+
+function actualizarPanelReconexion() {
+
+    const sesion =
+        obtenerSesion();
+
+    if (!sesion) {
+
+        panelReconexion.style.display =
+            "none";
+
+        return;
+    }
+
+    textoReconexion.textContent =
+        `Sala ${sesion.codigo} · ${sesion.nombre}`;
+
+    panelReconexion.style.display =
+        "block";
+}
 // ==========================================
 // UTILIDADES
 // ==========================================
@@ -497,7 +596,7 @@ btnCrearSala.addEventListener("click", async () => {
         };
 
         await set(salaRef, datosSala);
-
+        guardarSesion(nombre);
         codigoSala.textContent = codigoActual;
         escucharSala();
         cambiarPantalla(pantallaLobby);
@@ -555,7 +654,7 @@ btnUnirse.addEventListener("click", async () => {
             anfitrion: false,
             elemento: ""
         });
-
+        guardarSesion(nombre);
         codigoSala.textContent = codigoActual;
         escucharSala();
         cambiarPantalla(pantallaLobby);
@@ -566,6 +665,111 @@ btnUnirse.addEventListener("click", async () => {
     }
 });
 
+
+btnReconectar.addEventListener(
+    "click",
+    async () => {
+
+        const sesion =
+            obtenerSesion();
+
+        if (!sesion) {
+
+            alert(
+                "No hay una sesión guardada."
+            );
+
+            actualizarPanelReconexion();
+
+            return;
+        }
+
+
+        try {
+
+            const salaRef =
+                ref(
+                    database,
+                    `salas/${sesion.codigo}`
+                );
+
+
+            const snapshot =
+                await get(salaRef);
+
+
+            if (!snapshot.exists()) {
+
+                alert(
+                    "La sala ya no existe."
+                );
+
+                borrarSesion();
+
+                actualizarPanelReconexion();
+
+                return;
+            }
+
+
+            const sala =
+                snapshot.val();
+
+
+            const jugador =
+                sala.jugadores?.[
+                    sesion.jugadorId
+                ];
+
+
+            if (!jugador) {
+
+                alert(
+                    "Tu jugador ya no existe en esta sala."
+                );
+
+                borrarSesion();
+
+                actualizarPanelReconexion();
+
+                return;
+            }
+
+
+            // Recuperamos exactamente
+            // el mismo jugador
+            codigoActual =
+                sesion.codigo;
+
+            jugadorActualId =
+                sesion.jugadorId;
+
+
+            codigoSala.textContent =
+                codigoActual;
+
+
+            escucharSala();
+
+
+            // No importa si está en lobby
+            // o si la partida ya empezó.
+            // escucharSala decidirá
+            // qué pantalla mostrar.
+
+        } catch (error) {
+
+            console.error(
+                "Error reconectando:",
+                error
+            );
+
+            alert(
+                "No se pudo reconectar."
+            );
+        }
+    }
+);
 // ==========================================
 // SELECCIONAR CATEGORÍA
 // ==========================================
@@ -619,6 +823,32 @@ function escucharSala() {
         const sala = snapshot.val();
 
         jugadores = sala.jugadores || {};
+        // ======================================
+// COMPROBAR SI ME EXPULSARON
+// ======================================
+
+if (
+    jugadorActualId &&
+    !jugadores[jugadorActualId]
+) {
+
+    borrarSesion();
+
+    alert(
+        "Fuiste expulsado de la sala por el anfitrión."
+    );
+
+    codigoActual = "";
+    jugadorActualId = null;
+
+    cambiarPantalla(
+        pantallaInicio
+    );
+
+    actualizarPanelReconexion();
+
+    return;
+}
         categoriaActual = sala.categoria || "numeros";
 
         if (sala.estado === "esperando") {
@@ -637,39 +867,147 @@ function escucharSala() {
 // ==========================================
 
 function actualizarLobby(sala) {
+
     listaJugadores.innerHTML = "";
 
-    const lista = Object.entries(jugadores);
+    const lista =
+        Object.entries(jugadores);
 
-    lista.forEach(([id, jugador]) => {
-        const fila = document.createElement("div");
-        fila.classList.add("jugador");
+    const soyAnfitrion =
+        sala.anfitrionId ===
+        jugadorActualId;
 
-        const nombre = document.createElement("span");
 
-        nombre.textContent =
-            id === sala.anfitrionId
-                ? `${jugador.nombre} 👑`
-                : jugador.nombre;
+    lista.forEach(
+        ([id, jugador]) => {
 
-        fila.appendChild(nombre);
-        listaJugadores.appendChild(fila);
-    });
+            const fila =
+                document.createElement(
+                    "div"
+                );
 
-    contadorJugadores.textContent = `Jugadores: ${lista.length}`;
+            fila.classList.add(
+                "jugador"
+            );
 
-    const soyAnfitrion = sala.anfitrionId === jugadorActualId;
+
+            const nombre =
+                document.createElement(
+                    "span"
+                );
+
+
+            nombre.textContent =
+                id === sala.anfitrionId
+                    ? `${jugador.nombre} 👑`
+                    : jugador.nombre;
+
+
+            fila.appendChild(nombre);
+
+
+            // ==================================
+            // BOTÓN EXPULSAR
+            // ==================================
+
+            if (
+                soyAnfitrion &&
+                id !== jugadorActualId
+            ) {
+
+                const btnExpulsar =
+                    document.createElement(
+                        "button"
+                    );
+
+                btnExpulsar.textContent =
+                    "Expulsar";
+
+
+                btnExpulsar.addEventListener(
+                    "click",
+                    async () => {
+
+                        const confirmar =
+                            confirm(
+                                `¿Expulsar a ${jugador.nombre} de la sala?`
+                            );
+
+
+                        if (!confirmar) {
+                            return;
+                        }
+
+
+                        try {
+
+                            const jugadorRef =
+                                ref(
+                                    database,
+                                    `salas/${codigoActual}/jugadores/${id}`
+                                );
+
+
+                            // Eliminar jugador
+                            await set(
+                                jugadorRef,
+                                null
+                            );
+
+
+                        } catch (error) {
+
+                            console.error(
+                                "Error expulsando jugador:",
+                                error
+                            );
+
+                            alert(
+                                "No se pudo expulsar al jugador."
+                            );
+                        }
+                    }
+                );
+
+
+                fila.appendChild(
+                    btnExpulsar
+                );
+            }
+
+
+            listaJugadores.appendChild(
+                fila
+            );
+        }
+    );
+
+
+    contadorJugadores.textContent =
+        `Jugadores: ${lista.length}`;
+
 
     btnIniciarPartida.style.display =
-        soyAnfitrion ? "inline-block" : "none";
+        soyAnfitrion
+            ? "inline-block"
+            : "none";
 
-    selectorCategoria.value = sala.categoria || "numeros";
-    selectorCategoria.disabled = !soyAnfitrion;
+
+    selectorCategoria.value =
+        sala.categoria || "numeros";
+
+
+    selectorCategoria.disabled =
+        !soyAnfitrion;
+
 
     if (soyAnfitrion) {
+
         textoCategoria.textContent =
             "Elegí una categoría. Toda la sala jugará únicamente con esa categoría.";
+
     } else {
+
         textoCategoria.textContent =
             `Categoría elegida por el anfitrión: ${categorias[categoriaActual].nombre}`;
     }
@@ -1458,5 +1796,14 @@ await update(
                 error
             );
         }
+    }
+);
+btnOlvidarSesion.addEventListener(
+    "click",
+    () => {
+
+        borrarSesion();
+
+        actualizarPanelReconexion();
     }
 );
