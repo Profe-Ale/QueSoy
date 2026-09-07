@@ -1159,9 +1159,12 @@ async function iniciarPartidaFirebase() {
         await update(salaRef, cambios);
 
     } catch (error) {
-        console.error("Error iniciando:", error);
-        alert("Ocurrió un error al iniciar la partida.");
-    }
+    console.error("ERROR COMPLETO AL INICIAR:", error);
+
+    alert(
+        "Error al iniciar: " +
+        (error?.message || String(error))
+    );
 }
 
 btnIniciarPartida.addEventListener("click", iniciarPartidaFirebase);
