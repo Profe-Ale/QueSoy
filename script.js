@@ -1807,3 +1807,8 @@ btnOlvidarSesion.addEventListener(
         actualizarPanelReconexion();
     }
 );
+// ==========================================
+// COMPROBAR SESIÓN AL ABRIR LA PÁGINA
+// ==========================================
+
+actualizarPanelReconexion();
