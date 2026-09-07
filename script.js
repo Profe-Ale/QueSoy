@@ -1627,6 +1627,10 @@ if (revelados) {
         textoRevelado = "🎉 ¡Tu animal era!";
     }
 
+    if (categoriaActual === "videojuegos") {
+    textoRevelado = "🎮 ¡Tu videojuego era!";
+    }
+
     turnoActualElemento.textContent =
         textoRevelado;
 
