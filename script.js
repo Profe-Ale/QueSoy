@@ -1960,5 +1960,6 @@ btnOlvidarSesion.addEventListener(
 // COMPROBAR SESIÓN AL ABRIR LA PÁGINA
 // ==========================================
 
-actualizarPanelReconexion();
-    
+actualizarPanelReconexion(); 
+ }
+);
