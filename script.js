@@ -1241,7 +1241,7 @@ function cargarPartida(sala) {
 
     revelados =
         sala.revelados === true;
-
+    
 
     if (rondaActual !== sala.ronda) {
 
@@ -1255,7 +1255,7 @@ function cargarPartida(sala) {
     // Primero entramos a la pantalla
     cambiarPantalla(pantallaJuego);
 
-
+    cargarNotas();
     // Actualizamos los textos
     actualizarTextosDeJuego();
 
