@@ -50,6 +50,9 @@ const textoReconexion = document.getElementById("textoReconexion");
 const btnReconectar = document.getElementById("btnReconectar");
 const btnOlvidarSesion = document.getElementById("btnOlvidarSesion");
 
+const blocNotas = document.getElementById("blocNotas");
+const btnLimpiarNotas = document.getElementById("btnLimpiarNotas");
+
 // ==========================================
 // CATEGORÍAS
 // ==========================================
@@ -581,6 +584,58 @@ function actualizarPanelReconexion() {
     panelReconexion.style.display =
         "block";
 }
+// ==========================================
+// BLOC DE NOTAS
+// ==========================================
+
+function claveNotasActual() {
+    return `notas_${codigoActual}_${jugadorActualId}`;
+}
+
+
+function cargarNotas() {
+
+    const guardadas =
+        localStorage.getItem(
+            claveNotasActual()
+        );
+
+    blocNotas.value =
+        guardadas || "";
+}
+
+
+blocNotas.addEventListener(
+    "input",
+    () => {
+
+        if (
+            !codigoActual ||
+            !jugadorActualId
+        ) {
+            return;
+        }
+
+        localStorage.setItem(
+            claveNotasActual(),
+            blocNotas.value
+        );
+    }
+);
+
+
+btnLimpiarNotas.addEventListener(
+    "click",
+    () => {
+
+        blocNotas.value = "";
+
+        localStorage.removeItem(
+            claveNotasActual()
+        );
+    }
+);
+
 // ==========================================
 // UTILIDADES
 // ==========================================
@@ -1906,3 +1961,4 @@ btnOlvidarSesion.addEventListener(
 // ==========================================
 
 actualizarPanelReconexion();
+    
