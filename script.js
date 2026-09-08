@@ -828,7 +828,13 @@ function cargarNotas() {
 
 function borrarNotasActuales() {
 
-    blocNotas.value = "";
+    blocNotas.value = "";,
+    videojuegos: {
+    nombre: "VideoJuegos",
+    titulo: "¿Qué VideoJuego soy?",
+    secreto: "Tu VideoJuego secreto es:",
+    grilla: "VideoJuegos posibles",
+    opciones: videojuegos
 
     claveNotasCargada =
         claveNotasActual();
@@ -2338,23 +2344,27 @@ if (revelados) {
     let textoRevelado = "🎉 ¡Tu elemento era!";
 
     if (categoriaActual === "numeros") {
-        textoRevelado = "🎉 ¡Tu número era!";
+        textoRevelado = "🎲 ¡Tu número era!";
     }
 
     if (categoriaActual === "objetos") {
-        textoRevelado = "🎉 ¡Tu objeto era!";
+        textoRevelado = "📦 ¡Tu objeto era!";
     }
 
     if (categoriaActual === "profesiones") {
-        textoRevelado = "🎉 ¡Tu profesión era!";
+        textoRevelado = "🤵‍♂️ ¡Tu profesión era!";
     }
 
     if (categoriaActual === "animales") {
-        textoRevelado = "🎉 ¡Tu animal era!";
+        textoRevelado = "🐾 ¡Tu animal era!";
     }
 
     if (categoriaActual === "videojuegos") {
     textoRevelado = "🎮 ¡Tu videojuego era!";
+    }
+
+    if (categoriaActual === "peliculas") {
+    textoRevelado = "🎬 ¡Tu Pelicula era!";
     }
 
     turnoActualElemento.textContent =
