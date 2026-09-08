@@ -287,15 +287,6 @@
 
 
   <!-- ============================= -->
-  <!-- APUNTES (botón flotante + cuadro) -->
-  <!-- ============================= -->
-
-  <!-- Todo el bloque va con position:fixed, así queda
-       siempre a la vista mientras se scrollea.
-       El cuadro de notas se posiciona respecto del botón,
-       o sea que se abre justo donde uno hizo click. -->
-
-  <!-- ============================= -->
   <!-- AVISOS -->
   <!-- ============================= -->
 
@@ -309,12 +300,21 @@
   ></div>
 
 
+  <!-- ============================= -->
+  <!-- NOTAS (botón flotante + cuadro) -->
+  <!-- ============================= -->
+
+  <!-- Todo el bloque va con position:fixed, así queda
+       siempre a la vista mientras se scrollea.
+       El cuadro se posiciona respecto del botón, o sea
+       que se abre justo donde uno hizo click. -->
+
   <div id="fondoNotas" class="notas-fondo"></div>
 
   <div id="notasFlotante" class="notas-flotante">
 
     <!-- En PC dice "Notas". En celular queda sólo
-         la hamburguesa. Lo decide el CSS. -->
+         el ícono del bloc. Lo decide el CSS. -->
     <button
       id="btnAbrirNotas"
       class="notas-toggle"
@@ -323,7 +323,24 @@
       aria-expanded="false"
       aria-label="Abrir mis notas"
     >
-      <span class="notas-hamburguesa" aria-hidden="true"></span>
+      <!-- Bloc de notas: anillas arriba y renglones.
+           Usa currentColor, así toma el color del botón. -->
+      <svg
+        class="notas-icono"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <rect x="4" y="4" width="16" height="17" rx="2"></rect>
+        <path d="M9 2v4"></path>
+        <path d="M15 2v4"></path>
+        <path d="M8 11h8"></path>
+        <path d="M8 15h6"></path>
+      </svg>
       <span class="notas-toggle-texto">Notas</span>
     </button>
 
