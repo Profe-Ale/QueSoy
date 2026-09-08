@@ -4,7 +4,9 @@ import {
     set,
     get,
     onValue,
-    update
+    update,
+    remove,
+    runTransaction
 } from "./firebase.js";
 
 // ==========================================
@@ -55,6 +57,71 @@ const btnLimpiarNotas = document.getElementById("btnLimpiarNotas");
 const btnAbrirNotas = document.getElementById("btnAbrirNotas");
 const btnCerrarNotas = document.getElementById("btnCerrarNotas");
 const fondoNotas = document.getElementById("fondoNotas");
+
+const aviso = document.getElementById("aviso");
+
+
+// ==========================================
+// AVISOS
+// ==========================================
+
+// Reemplaza a los alert() del navegador. No bloquea el
+// hilo, no abre un modal del sistema y se puede seguir
+// jugando mientras el cartel está a la vista.
+let temporizadorAviso = null;
+
+function mostrarAviso(texto, tipo = "info") {
+
+    aviso.textContent = texto;
+
+    aviso.classList.toggle(
+        "aviso-error",
+        tipo === "error"
+    );
+
+    aviso.classList.add("visible");
+
+    if (temporizadorAviso) {
+        clearTimeout(temporizadorAviso);
+    }
+
+    // Los mensajes largos quedan un rato más
+    const duracion =
+        texto.length > 60
+            ? 6000
+            : 4000;
+
+    temporizadorAviso = setTimeout(
+        () => {
+            aviso.classList.remove("visible");
+            temporizadorAviso = null;
+        },
+        duracion
+    );
+}
+
+// ==========================================
+// BOTONES OCUPADOS
+// ==========================================
+
+// Deshabilita el botón mientras corre la operación.
+// Sin esto, un doble click en "Crear sala" (muy fácil
+// de hacer sin querer en celular) creaba DOS salas y
+// te dejaba en la segunda.
+async function conBotonOcupado(boton, tarea) {
+
+    if (boton.disabled) {
+        return;
+    }
+
+    boton.disabled = true;
+
+    try {
+        return await tarea();
+    } finally {
+        boton.disabled = false;
+    }
+}
 
 // ==========================================
 // CATEGORÍAS
@@ -659,14 +726,14 @@ function borrarNotasActuales() {
 }
 
 
-// Las notas de salas viejas quedaban para siempre en localStorage.
-// Al entrar a una sala nos quedamos sólo con las de esa sala.
-function limpiarNotasDeOtrasSalas() {
+// Las notas y los tachados de salas viejas quedaban para
+// siempre en localStorage. Al entrar a una sala nos
+// quedamos sólo con los de esa sala.
+function limpiarGuardadoDeOtrasSalas() {
 
     try {
 
-        const prefijoActual =
-            `notas_${codigoActual}_`;
+        const prefijos = ["notas_", "tachados_"];
 
         const aBorrar = [];
 
@@ -674,11 +741,23 @@ function limpiarNotasDeOtrasSalas() {
 
             const clave = localStorage.key(i);
 
-            if (
-                clave &&
-                clave.startsWith("notas_") &&
-                !clave.startsWith(prefijoActual)
-            ) {
+            if (!clave) {
+                continue;
+            }
+
+            const esNuestro =
+                prefijos.some(prefijo =>
+                    clave.startsWith(prefijo)
+                );
+
+            const esDeEstaSala =
+                prefijos.some(prefijo =>
+                    clave.startsWith(
+                        `${prefijo}${codigoActual}_`
+                    )
+                );
+
+            if (esNuestro && !esDeEstaSala) {
                 aBorrar.push(clave);
             }
         }
@@ -690,7 +769,88 @@ function limpiarNotasDeOtrasSalas() {
     } catch (error) {
 
         console.warn(
-            "No se pudieron limpiar notas viejas:",
+            "No se pudo limpiar el guardado viejo:",
+            error
+        );
+    }
+}
+
+
+// ==========================================
+// TACHADOS
+// ==========================================
+
+// Antes tachadosLocales era sólo un Set en memoria: al
+// recargar la página se perdía todo lo descartado, que
+// es la mitad del juego. Ahora se guarda por sala,
+// jugador y ronda, igual que las notas.
+function claveTachadosActual() {
+    return `tachados_${codigoActual}_${jugadorActualId}_${rondaActual}`;
+}
+
+
+function cargarTachados() {
+
+    tachadosLocales.clear();
+
+    if (
+        !codigoActual ||
+        !jugadorActualId ||
+        rondaActual === null
+    ) {
+        return;
+    }
+
+    try {
+
+        const guardados =
+            localStorage.getItem(
+                claveTachadosActual()
+            );
+
+        if (!guardados) {
+            return;
+        }
+
+        const lista = JSON.parse(guardados);
+
+        if (Array.isArray(lista)) {
+            lista.forEach(valor => {
+                tachadosLocales.add(String(valor));
+            });
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "No se pudieron leer los tachados:",
+            error
+        );
+    }
+}
+
+
+function guardarTachados() {
+
+    if (
+        !codigoActual ||
+        !jugadorActualId ||
+        rondaActual === null
+    ) {
+        return;
+    }
+
+    try {
+
+        localStorage.setItem(
+            claveTachadosActual(),
+            JSON.stringify([...tachadosLocales])
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "No se pudieron guardar los tachados:",
             error
         );
     }
@@ -901,11 +1061,64 @@ function actualizarTextosDeJuego() {
 // CREAR SALA
 // ==========================================
 
-btnCrearSala.addEventListener("click", async () => {
+// Las salas nunca se borraban: cada partida dejaba una
+// para siempre y el plan gratuito de Firebase es 1 GB.
+// Al crear una sala nueva barremos las que ya nadie usa.
+const HORAS_PARA_BORRAR_SALA = 12;
+
+async function borrarSalasViejas() {
+
+    try {
+
+        const todasRef = ref(database, "salas");
+        const snapshot = await get(todasRef);
+
+        if (!snapshot.exists()) {
+            return;
+        }
+
+        const limite =
+            Date.now() -
+            HORAS_PARA_BORRAR_SALA * 60 * 60 * 1000;
+
+        const borrados = [];
+
+        Object.entries(snapshot.val()).forEach(
+            ([codigo, sala]) => {
+
+                // Sin creadaEn no sabemos la antigüedad,
+                // así que por las dudas no la tocamos
+                if (
+                    typeof sala?.creadaEn === "number" &&
+                    sala.creadaEn < limite
+                ) {
+                    borrados.push(
+                        remove(
+                            ref(database, `salas/${codigo}`)
+                        )
+                    );
+                }
+            }
+        );
+
+        await Promise.all(borrados);
+
+    } catch (error) {
+
+        // Que falle la limpieza no puede impedir jugar
+        console.warn(
+            "No se pudieron borrar las salas viejas:",
+            error
+        );
+    }
+}
+
+
+btnCrearSala.addEventListener("click", () => conBotonOcupado(btnCrearSala, async () => {
     const nombre = nombreCreador.value.trim();
 
     if (nombre === "") {
-        alert("Ingresá tu nombre.");
+        mostrarAviso("Ingresá tu nombre.");
         return;
     }
 
@@ -948,27 +1161,31 @@ btnCrearSala.addEventListener("click", async () => {
         escucharSala();
         cambiarPantalla(pantallaLobby);
 
+        // En segundo plano: no hace falta esperarla
+        // para empezar a jugar.
+        borrarSalasViejas();
+
     } catch (error) {
         console.error("Error creando sala:", error);
-        alert("Hubo un error al crear la sala.");
+        mostrarAviso("Hubo un error al crear la sala.", "error");
     }
-});
+}));
 
 // ==========================================
 // UNIRSE A SALA
 // ==========================================
 
-btnUnirse.addEventListener("click", async () => {
+btnUnirse.addEventListener("click", () => conBotonOcupado(btnUnirse, async () => {
     const nombre = nombreJugador.value.trim();
     const codigo = codigoSalaInput.value.trim().toUpperCase();
 
     if (nombre === "") {
-        alert("Ingresá tu nombre.");
+        mostrarAviso("Ingresá tu nombre.");
         return;
     }
 
     if (codigo === "") {
-        alert("Ingresá el código de la sala.");
+        mostrarAviso("Ingresá el código de la sala.");
         return;
     }
 
@@ -977,14 +1194,14 @@ btnUnirse.addEventListener("click", async () => {
         const snapshot = await get(salaRef);
 
         if (!snapshot.exists()) {
-            alert("La sala no existe.");
+            mostrarAviso("La sala no existe.", "error");
             return;
         }
 
         const sala = snapshot.val();
 
         if (sala.estado !== "esperando") {
-            alert("La partida ya comenzó.");
+            mostrarAviso("La partida ya comenzó.");
             return;
         }
 
@@ -1008,21 +1225,21 @@ btnUnirse.addEventListener("click", async () => {
 
     } catch (error) {
         console.error("Error entrando:", error);
-        alert("No se pudo entrar a la sala.");
+        mostrarAviso("No se pudo entrar a la sala.", "error");
     }
-});
+}));
 
 
 btnReconectar.addEventListener(
     "click",
-    async () => {
+    () => conBotonOcupado(btnReconectar, async () => {
 
         const sesion =
             obtenerSesion();
 
         if (!sesion) {
 
-            alert(
+            mostrarAviso(
                 "No hay una sesión guardada."
             );
 
@@ -1047,8 +1264,9 @@ btnReconectar.addEventListener(
 
             if (!snapshot.exists()) {
 
-                alert(
-                    "La sala ya no existe."
+                mostrarAviso(
+                    "La sala ya no existe.",
+                    "error"
                 );
 
                 borrarSesion();
@@ -1071,7 +1289,7 @@ btnReconectar.addEventListener(
 
             if (!jugador) {
 
-                alert(
+                mostrarAviso(
                     "Tu jugador ya no existe en esta sala."
                 );
 
@@ -1111,11 +1329,12 @@ btnReconectar.addEventListener(
                 error
             );
 
-            alert(
-                "No se pudo reconectar."
+            mostrarAviso(
+                "No se pudo reconectar.",
+                "error"
             );
         }
-    }
+    })
 );
 // ==========================================
 // SELECCIONAR CATEGORÍA
@@ -1134,13 +1353,13 @@ selectorCategoria.addEventListener("change", async () => {
 
         if (sala.anfitrionId !== jugadorActualId) {
             selectorCategoria.value = sala.categoria || "numeros";
-            alert("Solo el anfitrión puede cambiar la categoría.");
+            mostrarAviso("Solo el anfitrión puede cambiar la categoría.");
             return;
         }
 
         if (sala.estado !== "esperando") {
             selectorCategoria.value = sala.categoria || "numeros";
-            alert("No se puede cambiar la categoría durante una partida.");
+            mostrarAviso("No se puede cambiar la categoría durante una partida.");
             return;
         }
 
@@ -1150,7 +1369,7 @@ selectorCategoria.addEventListener("change", async () => {
 
     } catch (error) {
         console.error("Error cambiando categoría:", error);
-        alert("No se pudo cambiar la categoría.");
+        mostrarAviso("No se pudo cambiar la categoría.", "error");
     }
 });
 
@@ -1167,6 +1386,30 @@ function dejarDeEscucharSala() {
 }
 
 
+// Corta la suscripción, limpia el estado y devuelve
+// a la pantalla de inicio. Se usa cuando expulsan al
+// jugador y cuando la sala deja de existir.
+function volverAlInicio() {
+
+    // Primero cortamos: si no, las siguientes
+    // actualizaciones de esa sala nos vuelven a meter
+    // en una pantalla de la que ya salimos.
+    dejarDeEscucharSala();
+
+    borrarSesion();
+
+    codigoActual = "";
+    jugadorActualId = null;
+    rondaActual = null;
+    claveNotasCargada = null;
+    tachadosLocales.clear();
+
+    cambiarPantalla(pantallaInicio);
+
+    actualizarPanelReconexion();
+}
+
+
 function escucharSala() {
 
     // Si ya estábamos escuchando otra sala (o la misma), cortamos.
@@ -1174,13 +1417,26 @@ function escucharSala() {
     // o se reconectaba, y todos peleaban por la misma pantalla.
     dejarDeEscucharSala();
 
-    limpiarNotasDeOtrasSalas();
+    limpiarGuardadoDeOtrasSalas();
 
     const salaRef = ref(database, `salas/${codigoActual}`);
 
     desuscribirSala = onValue(salaRef, snapshot => {
+
+        // La sala desapareció (la borró el anfitrión o la
+        // limpieza de salas viejas). Antes se avisaba y se
+        // hacía return, pero el listener quedaba vivo y uno
+        // se quedaba en la pantalla de juego con datos viejos,
+        // sin forma de salir salvo recargar.
         if (!snapshot.exists()) {
-            alert("La sala ya no existe.");
+
+            volverAlInicio();
+
+            mostrarAviso(
+                "La sala ya no existe.",
+                "error"
+            );
+
             return;
         }
 
@@ -1197,27 +1453,11 @@ function escucharSala() {
             !jugadores[jugadorActualId]
         ) {
 
-            // Cortamos la suscripción ANTES de nada.
-            // Si no, las siguientes actualizaciones de esa sala
-            // nos devolvían al lobby del que nos acababan de echar.
-            dejarDeEscucharSala();
+            volverAlInicio();
 
-            borrarSesion();
-
-            codigoActual = "";
-            jugadorActualId = null;
-            rondaActual = null;
-            claveNotasCargada = null;
-            tachadosLocales.clear();
-
-            cambiarPantalla(
-                pantallaInicio
-            );
-
-            actualizarPanelReconexion();
-
-            alert(
-                "Fuiste expulsado de la sala por el anfitrión."
+            mostrarAviso(
+                "Fuiste expulsado de la sala por el anfitrión.",
+                "error"
             );
 
             return;
@@ -1300,7 +1540,7 @@ function actualizarLobby(sala) {
 
                 btnExpulsar.addEventListener(
                     "click",
-                    async () => {
+                    () => conBotonOcupado(btnExpulsar, async () => {
 
                         const confirmar =
                             confirm(
@@ -1322,11 +1562,7 @@ function actualizarLobby(sala) {
                                 );
 
 
-                            // Eliminar jugador
-                            await set(
-                                jugadorRef,
-                                null
-                            );
+                            await remove(jugadorRef);
 
 
                         } catch (error) {
@@ -1336,11 +1572,12 @@ function actualizarLobby(sala) {
                                 error
                             );
 
-                            alert(
-                                "No se pudo expulsar al jugador."
+                            mostrarAviso(
+                                "No se pudo expulsar al jugador.",
+                                "error"
                             );
                         }
-                    }
+                    })
                 );
 
 
@@ -1382,8 +1619,15 @@ function actualizarLobby(sala) {
 
     } else {
 
+        // Con fallback, igual que el resto del código: si en
+        // la base quedó una categoría desconocida, antes esto
+        // tiraba una excepción y rompía todo el lobby.
+        const datosCategoria =
+            categorias[categoriaActual] ||
+            categorias.numeros;
+
         textoCategoria.textContent =
-            `Categoría elegida por el anfitrión: ${categorias[categoriaActual].nombre}`;
+            `Categoría elegida por el anfitrión: ${datosCategoria.nombre}`;
     }
 }
 
@@ -1397,28 +1641,28 @@ async function iniciarPartidaFirebase() {
         const snapshot = await get(salaRef);
 
         if (!snapshot.exists()) {
-            alert("La sala ya no existe.");
+            mostrarAviso("La sala ya no existe.", "error");
             return;
         }
 
         const sala = snapshot.val();
 
         if (sala.anfitrionId !== jugadorActualId) {
-            alert("Solo el anfitrión puede iniciar la partida.");
+            mostrarAviso("Solo el anfitrión puede iniciar la partida.");
             return;
         }
 
         const jugadoresSala = sala.jugadores || {};
-        const listaJugadores = Object.entries(jugadoresSala);
-        const ordenTurnos = mezclarArray(listaJugadores.map(([id]) => id));
+        const entradasJugadores = Object.entries(jugadoresSala);
+        const ordenTurnos = mezclarArray(entradasJugadores.map(([id]) => id));
 
-        if (listaJugadores.length < 2) {
-            alert("Necesitás al menos 2 jugadores.");
+        if (entradasJugadores.length < 2) {
+            mostrarAviso("Necesitás al menos 2 jugadores.");
             return;
         }
 
-        if (listaJugadores.length > 50) {
-            alert("Puede haber como máximo 50 jugadores.");
+        if (entradasJugadores.length > 50) {
+            mostrarAviso("Puede haber como máximo 50 jugadores.");
             return;
         }
 
@@ -1439,7 +1683,7 @@ async function iniciarPartidaFirebase() {
             ordenTurnos: ordenTurnos,
             turnoActual: 0
 };
-        listaJugadores.forEach(([id], indice) => {
+        entradasJugadores.forEach(([id], indice) => {
             cambios[`jugadores/${id}/elemento`] = opcionesJugadores[indice];
         });
 
@@ -1449,14 +1693,18 @@ async function iniciarPartidaFirebase() {
 
         console.error("ERROR COMPLETO AL INICIAR:", error);
 
-        alert(
+        mostrarAviso(
             "Error al iniciar: " +
-            (error?.message || String(error))
+            (error?.message || String(error)),
+            "error"
         );
     }
 }
 
-btnIniciarPartida.addEventListener("click", iniciarPartidaFirebase);
+btnIniciarPartida.addEventListener(
+    "click",
+    () => conBotonOcupado(btnIniciarPartida, iniciarPartidaFirebase)
+);
 
 // ==========================================
 // CARGAR PARTIDA
@@ -1488,13 +1736,17 @@ function cargarPartida(sala) {
         rondaActual =
             sala.ronda;
 
-        tachadosLocales.clear();
-
         if (esPartidaNueva) {
             // Los elementos cambiaron: las notas de la
             // partida anterior ya no sirven para nada.
             borrarNotasActuales();
         }
+
+        // La clave incluye la ronda, así que en una partida
+        // nueva no hay nada que recuperar y arranca vacío,
+        // pero si sólo se recargó la página vuelve todo
+        // lo que se había tachado.
+        cargarTachados();
     }
 
 
@@ -1581,12 +1833,28 @@ function mostrarGrilla() {
     opcionesOrdenadas.forEach(opcion => {
         const clave = String(opcion);
 
-        const casilla = document.createElement("div");
+        // Botón y no div: así se puede tachar con el teclado
+        // (Tab + Enter) y un lector de pantalla lo anuncia
+        // como algo apretable, con su estado de tachado.
+        const casilla = document.createElement("button");
+        casilla.type = "button";
         casilla.classList.add("numero");
         casilla.textContent = opcion;
 
-        if (elementosOtros.has(clave)) {
+        const esDeOtroJugador =
+            elementosOtros.has(clave);
+
+        if (esDeOtroJugador) {
             casilla.classList.add("numero-otro-jugador");
+
+            // Ya se sabe de quién es: no hay nada que tachar
+            casilla.disabled = true;
+            casilla.title = "Es el elemento de otro jugador";
+        } else {
+            casilla.setAttribute(
+                "aria-pressed",
+                String(tachadosLocales.has(clave))
+            );
         }
 
         if (tachadosLocales.has(clave)) {
@@ -1594,7 +1862,7 @@ function mostrarGrilla() {
         }
 
         casilla.addEventListener("click", () => {
-            if (elementosOtros.has(clave)) {
+            if (esDeOtroJugador) {
                 return;
             }
 
@@ -1605,6 +1873,13 @@ function mostrarGrilla() {
                 tachadosLocales.add(clave);
                 casilla.classList.add("tachado");
             }
+
+            casilla.setAttribute(
+                "aria-pressed",
+                String(tachadosLocales.has(clave))
+            );
+
+            guardarTachados();
         });
 
         grillaNumeros.appendChild(casilla);
@@ -1615,20 +1890,20 @@ function mostrarGrilla() {
 // REVELAR TODOS
 // ==========================================
 
-btnRevelar.addEventListener("click", async () => {
+btnRevelar.addEventListener("click", () => conBotonOcupado(btnRevelar, async () => {
     try {
         const salaRef = ref(database, `salas/${codigoActual}`);
         const snapshot = await get(salaRef);
 
         if (!snapshot.exists()) {
-            alert("La sala no existe.");
+            mostrarAviso("La sala no existe.", "error");
             return;
         }
 
         const sala = snapshot.val();
 
         if (sala.anfitrionId !== jugadorActualId) {
-            alert("Solo el anfitrión puede revelar.");
+            mostrarAviso("Solo el anfitrión puede revelar.");
             return;
         }
 
@@ -1638,9 +1913,9 @@ btnRevelar.addEventListener("click", async () => {
 
     } catch (error) {
         console.error("Error revelando:", error);
-        alert("No se pudieron revelar los elementos.");
+        mostrarAviso("No se pudieron revelar los elementos.", "error");
     }
-});
+}));
 
 // ==========================================
 // NUEVA PARTIDA
@@ -1652,19 +1927,19 @@ async function nuevaPartidaFirebase() {
         const snapshot = await get(salaRef);
 
         if (!snapshot.exists()) {
-            alert("La sala ya no existe.");
+            mostrarAviso("La sala ya no existe.", "error");
             return;
         }
 
         const sala = snapshot.val();
 
         if (sala.anfitrionId !== jugadorActualId) {
-            alert("Solo el anfitrión puede comenzar una nueva partida.");
+            mostrarAviso("Solo el anfitrión puede comenzar una nueva partida.");
             return;
         }
 
-        const listaJugadores = Object.entries(sala.jugadores || {});
-        const nuevoOrdenTurnos = mezclarArray(listaJugadores.map(([id]) => id));
+        const entradasJugadores = Object.entries(sala.jugadores || {});
+        const nuevoOrdenTurnos = mezclarArray(entradasJugadores.map(([id]) => id));
         const categoria = sala.categoria || "numeros";
 
         const nuevasOpciones = generar50Opciones(categoria);
@@ -1683,7 +1958,7 @@ async function nuevaPartidaFirebase() {
             turnoActual: 0
 };
 
-        listaJugadores.forEach(([id], indice) => {
+        entradasJugadores.forEach(([id], indice) => {
             cambios[`jugadores/${id}/elemento`] = opcionesJugadores[indice];
         });
 
@@ -1691,11 +1966,14 @@ async function nuevaPartidaFirebase() {
 
     } catch (error) {
         console.error("Error nueva partida:", error);
-        alert("No se pudo comenzar una nueva partida.");
+        mostrarAviso("No se pudo comenzar una nueva partida.", "error");
     }
 }
 
-btnNuevaPartida.addEventListener("click", nuevaPartidaFirebase);
+btnNuevaPartida.addEventListener(
+    "click",
+    () => conBotonOcupado(btnNuevaPartida, nuevaPartidaFirebase)
+);
 
 // ==========================================
 // COPIAR CÓDIGO
@@ -1704,14 +1982,14 @@ btnNuevaPartida.addEventListener("click", nuevaPartidaFirebase);
 btnCopiarCodigo.addEventListener("click", async () => {
     try {
         await navigator.clipboard.writeText(codigoActual);
-        alert("Código copiado: " + codigoActual);
+        mostrarAviso("Código copiado: " + codigoActual);
     } catch {
-        alert("Código de sala: " + codigoActual);
+        mostrarAviso("Código de sala: " + codigoActual);
     }
 });
 btnVolverSala.addEventListener(
     "click",
-    async () => {
+    () => conBotonOcupado(btnVolverSala, async () => {
 
         try {
 
@@ -1725,8 +2003,9 @@ btnVolverSala.addEventListener(
 
             if (!snapshot.exists()) {
 
-                alert(
-                    "La sala ya no existe."
+                mostrarAviso(
+                    "La sala ya no existe.",
+                    "error"
                 );
 
                 return;
@@ -1742,7 +2021,7 @@ btnVolverSala.addEventListener(
                 jugadorActualId
             ) {
 
-                alert(
+                mostrarAviso(
                     "Solo el anfitrión puede volver a la sala."
                 );
 
@@ -1755,7 +2034,7 @@ btnVolverSala.addEventListener(
                 sala.revelados !== true
             ) {
 
-                alert(
+                mostrarAviso(
                     "Primero deben revelar los elementos."
                 );
 
@@ -1780,11 +2059,12 @@ btnVolverSala.addEventListener(
                 error
             );
 
-            alert(
-                "No se pudo volver a la sala de espera."
+            mostrarAviso(
+                "No se pudo volver a la sala de espera.",
+                "error"
             );
         }
-    }
+    })
 );
 function mostrarTurnoActual(sala) {
 
@@ -2127,55 +2407,67 @@ function calcularSiguienteTurno(sala) {
 }
 
 
-    btnTerminarTurno.addEventListener(
-        "click",
-            async () => {
+// ==========================================
+// PASAR EL TURNO
+// ==========================================
 
-            try {
+// Antes esto era get() -> calcular -> update(). Si el
+// anfitrión forzaba justo cuando el jugador terminaba,
+// las dos escrituras se pisaban y se salteaba un turno
+// o se pisaba el número de ronda.
+//
+// runTransaction lee y escribe de forma atómica: si otro
+// cliente escribió en el medio, Firebase vuelve a correr
+// esta función con el dato nuevo.
+async function pasarTurno({ forzado }) {
 
-            const salaRef =
-                ref(
-                    database,
-                    `salas/${codigoActual}`
-                );
+    if (!codigoActual || !jugadorActualId) {
+        return;
+    }
 
-            const snapshot =
-                await get(salaRef);
+    const salaRef =
+        ref(database, `salas/${codigoActual}`);
 
-            if (!snapshot.exists()) {
+    // La función de abajo puede correr varias veces, así
+    // que el motivo del rechazo se guarda acá afuera y se
+    // avisa una sola vez, al final.
+    let rechazo = null;
+
+    try {
+
+        await runTransaction(salaRef, sala => {
+
+            // Firebase llama primero con lo que tiene en
+            // caché. Como escucharSala() mantiene un listener
+            // activo sobre esta misma ruta, el dato ya está
+            // sincronizado. Si aun así llega vacío, abortamos
+            // devolviendo undefined en vez de escribir nada.
+            if (!sala) {
                 return;
             }
 
-            const sala =
-                snapshot.val();
+            if (forzado) {
 
+                if (sala.anfitrionId !== jugadorActualId) {
 
-            const orden =
-                sala.ordenTurnos || [];
+                    rechazo =
+                        "Solo el anfitrión puede forzar el turno.";
 
-            const indice =
-                sala.turnoActual || 0;
+                    return;
+                }
 
+            } else {
 
-            if (orden.length === 0) {
-                return;
+                const orden = sala.ordenTurnos || [];
+                const indice = sala.turnoActual ?? 0;
+
+                if (orden[indice] !== jugadorActualId) {
+
+                    rechazo = "Todavía no es tu turno.";
+
+                    return;
+                }
             }
-
-
-            // Comprobamos que realmente
-            // sea el turno de esta persona
-            if (
-                orden[indice] !==
-                jugadorActualId
-            ) {
-
-                alert(
-                    "Todavía no es tu turno."
-                );
-
-                return;
-            }
-
 
             const cambios =
                 calcularSiguienteTurno(sala);
@@ -2184,70 +2476,44 @@ function calcularSiguienteTurno(sala) {
                 return;
             }
 
-            await update(salaRef, cambios);
+            rechazo = null;
 
-        } catch (error) {
+            return { ...sala, ...cambios };
+        });
 
-            console.error(
-                "Error pasando turno:",
-                error
-            );
-        }
+    } catch (error) {
+
+        console.error("Error pasando turno:", error);
+
+        mostrarAviso(
+            "No se pudo pasar el turno.",
+            "error"
+        );
+
+        return;
     }
+
+    if (rechazo) {
+        mostrarAviso(rechazo);
+    }
+}
+
+
+btnTerminarTurno.addEventListener(
+    "click",
+    () => conBotonOcupado(
+        btnTerminarTurno,
+        () => pasarTurno({ forzado: false })
+    )
 );
+
+
 btnForzarTurno.addEventListener(
     "click",
-    async () => {
-
-        try {
-
-            const salaRef =
-                ref(
-                    database,
-                    `salas/${codigoActual}`
-                );
-
-            const snapshot =
-                await get(salaRef);
-
-            if (!snapshot.exists()) {
-                return;
-            }
-
-            const sala =
-                snapshot.val();
-
-
-            if (
-                sala.anfitrionId !==
-                jugadorActualId
-            ) {
-
-                alert(
-                    "Solo el anfitrión puede forzar el turno."
-                );
-
-                return;
-            }
-
-
-            const cambios =
-                calcularSiguienteTurno(sala);
-
-            if (!cambios) {
-                return;
-            }
-
-            await update(salaRef, cambios);
-
-        } catch (error) {
-
-            console.error(
-                "Error forzando turno:",
-                error
-            );
-        }
-    }
+    () => conBotonOcupado(
+        btnForzarTurno,
+        () => pasarTurno({ forzado: true })
+    )
 );
 btnOlvidarSesion.addEventListener(
     "click",
