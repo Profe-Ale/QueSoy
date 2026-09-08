@@ -151,6 +151,10 @@
             Peliculas
           </option>
 
+          <option value="libre">
+            Libre
+          </option>
+
         </select>
 
         <p
@@ -161,7 +165,50 @@
         </p>
 
       </div>
+        <!-- ===================================== -->
+<!-- MODO LIBRE -->
+<!-- ===================================== -->
 
+<div
+    id="panelModoLibre"
+    class="panel"
+    style="display: none;"
+>
+
+    <h2>🆓 Modo libre</h2>
+
+    <p>
+        Escribí una palabra secreta para otro jugador.
+        Nadie recibirá la palabra que escribió.
+    </p>
+
+    <input
+        id="inputPalabraLibre"
+        type="text"
+        maxlength="40"
+        placeholder="Escribí una palabra..."
+    >
+
+    <button id="btnGuardarPalabraLibre">
+        Guardar palabra
+    </button>
+
+    <p id="estadoPalabraLibre"></p>
+
+</div>
+
+
+<!-- ===================================== -->
+<!-- JUGADORES -->
+<!-- ===================================== -->
+
+<div class="panel">
+
+    <h2>Jugadores</h2>
+
+    <div id="listaJugadores"></div>
+
+</div>
 
       <div class="panel">
 
@@ -237,7 +284,6 @@
           ✅ Terminé mi turno
         </button>
 
-
         <button
           id="btnForzarTurno"
           style="display: none;"
@@ -254,9 +300,12 @@
         Opciones posibles
       </h2>
 
-      <p class="ayuda">
-        Tocá una opción para descartarla.
-      </p>
+      <p
+         id="ayudaGrilla"
+          class="ayuda"
+        >
+           Tocá una opción para descartarla.
+        </p>
 
       <div
         id="grillaNumeros"
