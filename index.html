@@ -5,7 +5,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- Que la barra del navegador en celular
+       acompañe el tema oscuro -->
+  <meta name="theme-color" content="#121212">
+
   <title>¿Qué soy?</title>
+
+  <!-- Favicon embebido: evita el 404 sin sumar un archivo -->
+  <link
+    rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%E2%9D%93</text></svg>"
+  >
 
   <link rel="stylesheet" href="style.css">
 </head>
@@ -285,6 +295,20 @@
        El cuadro de notas se posiciona respecto del botón,
        o sea que se abre justo donde uno hizo click. -->
 
+  <!-- ============================= -->
+  <!-- AVISOS -->
+  <!-- ============================= -->
+
+  <!-- Reemplaza a los alert() del navegador, que
+       bloquean el hilo y en celular son modales feos -->
+  <div
+    id="aviso"
+    class="aviso"
+    role="status"
+    aria-live="polite"
+  ></div>
+
+
   <div id="fondoNotas" class="notas-fondo"></div>
 
   <div id="notasFlotante" class="notas-flotante">
@@ -348,3 +372,4 @@
 
 </body>
   </html>
+
