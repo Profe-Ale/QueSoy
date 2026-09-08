@@ -1255,7 +1255,7 @@ function cargarPartida(sala) {
     // Primero entramos a la pantalla
     cambiarPantalla(pantallaJuego);
 
-    cargarNotas();
+
     // Actualizamos los textos
     actualizarTextosDeJuego();
 
@@ -1267,6 +1267,7 @@ function cargarPartida(sala) {
     // Mostramos grilla
     mostrarGrilla();
 
+    cargarNotas();
 
     const soyAnfitrion =
         sala.anfitrionId ===
