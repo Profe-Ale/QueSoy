@@ -59,6 +59,11 @@ const btnCerrarNotas = document.getElementById("btnCerrarNotas");
 const fondoNotas = document.getElementById("fondoNotas");
 
 const aviso = document.getElementById("aviso");
+const panelModoLibre = document.getElementById("panelModoLibre");
+const inputPalabraLibre = document.getElementById("inputPalabraLibre");
+const btnGuardarPalabraLibre = document.getElementById("btnGuardarPalabraLibre");
+const estadoPalabraLibre = document.getElementById("estadoPalabraLibre");
+const ayudaGrilla = document.getElementById("ayudaGrilla");
 
 
 // ==========================================
@@ -669,6 +674,14 @@ const categorias = {
     grilla: "Peliculas posibles",
     opciones: peliculas
 },
+
+libre: {
+    nombre: "Libre",
+    titulo: "¿Qué soy?",
+    secreto: "Tu palabra secreta es:",
+    grilla: "",
+    opciones: []
+},
 }
 // ==========================================
 // VARIABLES
@@ -1132,6 +1145,10 @@ function cambiarPantalla(pantalla) {
 
     if (!enJuego) {
         cerrarNotas();
+         document.body.classList.remove(
+        "modo-libre"
+    );
+
     }
 }
 
@@ -1459,6 +1476,99 @@ btnReconectar.addEventListener(
     })
 );
 // ==========================================
+// MODO LIBRE - GUARDAR PALABRA
+// ==========================================
+
+btnGuardarPalabraLibre.addEventListener(
+    "click",
+    () => conBotonOcupado(
+        btnGuardarPalabraLibre,
+        async () => {
+
+            if (!codigoActual || !jugadorActualId) {
+                return;
+            }
+
+            const palabra =
+                inputPalabraLibre.value.trim();
+
+            if (palabra === "") {
+                mostrarAviso(
+                    "Escribí una palabra antes de guardarla.",
+                    "error"
+                );
+                return;
+            }
+
+            try {
+
+                const salaRef =
+                    ref(
+                        database,
+                        `salas/${codigoActual}`
+                    );
+
+                const snapshot =
+                    await get(salaRef);
+
+                if (!snapshot.exists()) {
+                    return;
+                }
+
+                const sala =
+                    snapshot.val();
+
+                if (sala.categoria !== "libre") {
+                    mostrarAviso(
+                        "La sala no está en modo libre.",
+                        "error"
+                    );
+                    return;
+                }
+
+                if (sala.estado !== "esperando") {
+                    mostrarAviso(
+                        "La partida ya comenzó.",
+                        "error"
+                    );
+                    return;
+                }
+
+                const jugadorRef =
+                    ref(
+                        database,
+                        `salas/${codigoActual}/jugadores/${jugadorActualId}`
+                    );
+
+                await update(
+                    jugadorRef,
+                    {
+                        palabraPropuesta: palabra
+                    }
+                );
+
+                inputPalabraLibre.value = "";
+
+                mostrarAviso(
+                    "✅ Palabra guardada."
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Error guardando palabra libre:",
+                    error
+                );
+
+                mostrarAviso(
+                    "No se pudo guardar la palabra.",
+                    "error"
+                );
+            }
+        }
+    )
+);
+// ==========================================
 // SELECCIONAR CATEGORÍA
 // ==========================================
 
@@ -1612,6 +1722,38 @@ function actualizarLobby(sala) {
     const soyAnfitrion =
         sala.anfitrionId ===
         jugadorActualId;
+    const esModoLibre =
+    sala.categoria === "libre";
+
+panelModoLibre.style.display =
+    esModoLibre
+        ? "block"
+        : "none";
+    if (esModoLibre) {
+
+    const miJugador =
+        jugadores[jugadorActualId];
+
+    const yaGuarde =
+        Boolean(
+            miJugador?.palabraPropuesta?.trim()
+        );
+
+    estadoPalabraLibre.textContent =
+        yaGuarde
+            ? "✅ Tu palabra ya está guardada."
+            : "⏳ Todavía no guardaste una palabra.";
+
+    const cantidadListos =
+        Object.values(jugadores)
+            .filter(jugador =>
+                jugador.palabraPropuesta?.trim()
+            )
+            .length;
+
+    textoCategoria.textContent =
+        `🆓 Modo libre · Palabras listas: ${cantidadListos}/${lista.length}`;
+}
 
 
     lista.forEach(
@@ -1758,62 +1900,243 @@ function actualizarLobby(sala) {
 // ==========================================
 
 async function iniciarPartidaFirebase() {
+
     try {
-        const salaRef = ref(database, `salas/${codigoActual}`);
-        const snapshot = await get(salaRef);
+
+        const salaRef =
+            ref(
+                database,
+                `salas/${codigoActual}`
+            );
+
+        const snapshot =
+            await get(salaRef);
 
         if (!snapshot.exists()) {
-            mostrarAviso("La sala ya no existe.", "error");
+
+            mostrarAviso(
+                "La sala ya no existe.",
+                "error"
+            );
+
             return;
         }
 
-        const sala = snapshot.val();
+        const sala =
+            snapshot.val();
 
-        if (sala.anfitrionId !== jugadorActualId) {
-            mostrarAviso("Solo el anfitrión puede iniciar la partida.");
+        if (
+            sala.anfitrionId !==
+            jugadorActualId
+        ) {
+
+            mostrarAviso(
+                "Solo el anfitrión puede iniciar la partida."
+            );
+
             return;
         }
 
-        const jugadoresSala = sala.jugadores || {};
-        const entradasJugadores = Object.entries(jugadoresSala);
-        const ordenTurnos = mezclarArray(entradasJugadores.map(([id]) => id));
+        const jugadoresSala =
+            sala.jugadores || {};
+
+        const entradasJugadores =
+            Object.entries(jugadoresSala);
 
         if (entradasJugadores.length < 2) {
-            mostrarAviso("Necesitás al menos 2 jugadores.");
+
+            mostrarAviso(
+                "Necesitás al menos 2 jugadores."
+            );
+
             return;
         }
+
+        const categoria =
+            sala.categoria || "numeros";
+
+
+        // ======================================
+        // MODO LIBRE
+        // ======================================
+
+        if (categoria === "libre") {
+
+            const faltanPalabras =
+                entradasJugadores.filter(
+                    ([, jugador]) =>
+                        !jugador.palabraPropuesta?.trim()
+                );
+
+            if (faltanPalabras.length > 0) {
+
+                mostrarAviso(
+                    `Faltan ${faltanPalabras.length} jugador(es) por guardar su palabra.`,
+                    "error"
+                );
+
+                return;
+            }
+
+
+            // Mezclamos jugadores
+            const ordenAsignacion =
+                mezclarArray(
+                    entradasJugadores.map(
+                        ([id]) => id
+                    )
+                );
+
+
+            const cambios = {
+
+                estado: "jugando",
+
+                opcionesSeleccionadas: [],
+
+                revelados: false,
+
+                ronda: Date.now(),
+
+                rondaNumero: 1,
+
+                rondasTerminadas: false,
+
+                libreTerminado: false,
+
+                ganadorId: null,
+
+                ordenTurnos:
+                    mezclarArray(
+                        entradasJugadores.map(
+                            ([id]) => id
+                        )
+                    ),
+
+                turnoActual: 0
+            };
+
+
+            // La palabra de cada jugador
+            // se la damos al siguiente.
+            //
+            // De esta manera nadie recibe
+            // la palabra que escribió.
+            for (
+                let i = 0;
+                i < ordenAsignacion.length;
+                i++
+            ) {
+
+                const idQueEscribio =
+                    ordenAsignacion[i];
+
+                const idQueRecibe =
+                    ordenAsignacion[
+                        (i + 1) %
+                        ordenAsignacion.length
+                    ];
+
+                const palabra =
+                    jugadoresSala[
+                        idQueEscribio
+                    ].palabraPropuesta.trim();
+
+                cambios[
+                    `jugadores/${idQueRecibe}/elemento`
+                ] = palabra;
+            }
+
+
+            await update(
+                salaRef,
+                cambios
+            );
+
+            return;
+        }
+
+
+        // ======================================
+        // MODALIDADES NORMALES
+        // ======================================
+
+        const ordenTurnos =
+            mezclarArray(
+                entradasJugadores.map(
+                    ([id]) => id
+                )
+            );
 
         if (entradasJugadores.length > 50) {
-            mostrarAviso("Puede haber como máximo 50 jugadores.");
+
+            mostrarAviso(
+                "Puede haber como máximo 50 jugadores."
+            );
+
             return;
         }
 
-        const categoria = sala.categoria || "numeros";
-        const opciones = generar50Opciones(categoria);
-        const opcionesJugadores = mezclarArray(opciones);
+        const opciones =
+            generar50Opciones(
+                categoria
+            );
+
+        const opcionesJugadores =
+            mezclarArray(opciones);
 
         const cambios = {
+
             estado: "jugando",
-            opcionesSeleccionadas: opciones,
+
+            opcionesSeleccionadas:
+                opciones,
+
             revelados: false,
-            ronda: Date.now(),
 
-  // RONDAS
+            ronda:
+                Date.now(),
+
             rondaNumero: 1,
-            rondasTerminadas: false,
-            
-            ordenTurnos: ordenTurnos,
-            turnoActual: 0
-};
-        entradasJugadores.forEach(([id], indice) => {
-            cambios[`jugadores/${id}/elemento`] = opcionesJugadores[indice];
-        });
 
-        await update(salaRef, cambios);
+            rondasTerminadas:
+                false,
+
+            libreTerminado:
+                false,
+
+            ganadorId:
+                null,
+
+            ordenTurnos:
+                ordenTurnos,
+
+            turnoActual: 0
+        };
+
+        entradasJugadores.forEach(
+            ([id], indice) => {
+
+                cambios[
+                    `jugadores/${id}/elemento`
+                ] =
+                    opcionesJugadores[
+                        indice
+                    ];
+            }
+        );
+
+        await update(
+            salaRef,
+            cambios
+        );
 
     } catch (error) {
 
-        console.error("ERROR COMPLETO AL INICIAR:", error);
+        console.error(
+            "ERROR COMPLETO AL INICIAR:",
+            error
+        );
 
         mostrarAviso(
             "Error al iniciar: " +
@@ -1885,13 +2208,52 @@ function cargarPartida(sala) {
 
 
     // Mostramos grilla
+    const esModoLibre =
+    categoriaActual === "libre";
+
+    document.body.classList.toggle(
+    "modo-libre",
+    esModoLibre
+);
+
+ayudaGrilla.style.display =
+    esModoLibre
+        ? "none"
+        : "";
+
+if (esModoLibre) {
+
+    tituloGrilla.style.display =
+        "none";
+
+    grillaNumeros.style.display =
+        "none";
+
+} else {
+
+    tituloGrilla.style.display =
+        "";
+
+    grillaNumeros.style.display =
+        "";
+
     mostrarGrilla();
+}
 
     cargarNotas();
 
     const soyAnfitrion =
         sala.anfitrionId ===
         jugadorActualId;
+        if (esModoLibre) {
+
+    btnRevelar.style.display =
+        soyAnfitrion &&
+        sala.libreTerminado === true
+            ? "inline-block"
+            : "none";
+
+} 
 
 
     btnRevelar.style.display =
@@ -2201,6 +2563,151 @@ function mostrarTurnoActual(sala) {
 
     const rondasTerminadas =
         sala.rondasTerminadas === true;
+    // ======================================
+// MODO LIBRE
+// ======================================
+
+if (categoriaActual === "libre") {
+
+    contadorRonda.textContent =
+        "♾️ Modo libre";
+
+    const orden =
+        sala.ordenTurnos || [];
+
+    if (orden.length === 0) {
+
+        turnoActualElemento.textContent =
+            "Esperando...";
+
+        palabraTurno.textContent =
+            "???";
+
+        mensajeTurno.textContent =
+            "";
+
+        btnTerminarTurno.style.display =
+            "none";
+
+        btnForzarTurno.style.display =
+            "none";
+
+        return;
+    }
+
+
+    // ==================================
+    // ALGUIEN ADIVINÓ
+    // ==================================
+
+    if (sala.libreTerminado === true) {
+
+        const ganador =
+            jugadores[
+                sala.ganadorId
+            ];
+
+        contadorRonda.textContent =
+            "🏆 Partida terminada";
+
+        turnoActualElemento.textContent =
+            ganador
+                ? `🎉 ${ganador.nombre} adivinó`
+                : "🎉 ¡Alguien adivinó!";
+
+        const miJugador =
+            jugadores[
+                jugadorActualId
+            ];
+
+        palabraTurno.textContent =
+            miJugador?.elemento ||
+            "???";
+
+        mensajeTurno.textContent =
+            "La partida terminó.";
+
+        btnTerminarTurno.style.display =
+            "none";
+
+        btnForzarTurno.style.display =
+            "none";
+
+
+        return;
+    }
+
+
+    const indice =
+        sala.turnoActual ?? 0;
+
+    const idTurno =
+        orden[indice];
+
+    const jugador =
+        jugadores[idTurno];
+
+
+    if (!jugador) {
+
+        turnoActualElemento.textContent =
+            "Esperando...";
+
+        palabraTurno.textContent =
+            "???";
+
+        mensajeTurno.textContent =
+            "";
+        return;
+    }
+
+
+    const esMiTurno =
+        idTurno ===
+        jugadorActualId;
+
+    const soyAnfitrion =
+        sala.anfitrionId ===
+        jugadorActualId;
+
+
+    turnoActualElemento.textContent =
+        `🎤 Turno de: ${jugador.nombre}`;
+
+
+    if (esMiTurno) {
+
+        palabraTurno.textContent =
+            "???";
+
+        mensajeTurno.textContent =
+            "Hacé una pregunta o arriesgá tu respuesta.";
+
+    } else {
+
+        palabraTurno.textContent =
+            jugador.elemento || "???";
+
+        mensajeTurno.textContent =
+            `Esperando a que ${jugador.nombre} termine su turno...`;
+    }
+
+
+    btnTerminarTurno.style.display =
+        esMiTurno
+            ? "inline-block"
+            : "none";
+
+
+
+    btnForzarTurno.style.display =
+        soyAnfitrion
+            ? "inline-block"
+            : "none";
+
+
+    return;
+}
 
     if (rondaNumero === 6) {
 
@@ -2429,6 +2936,7 @@ if (revelados) {
             ? "inline-block"
             : "none";
 }
+   
 // ==========================================
 // AVANCE DE TURNO (lógica compartida)
 // ==========================================
@@ -2501,6 +3009,27 @@ function calcularSiguienteTurno(sala) {
         sala.rondaNumero || 1;
 
     let rondasTerminadas = false;
+    // ======================================
+    // MODO LIBRE: TURNOS INFINITOS// 
+    // ======================================
+
+if (sala.categoria === "libre") {
+
+    if (sala.libreTerminado === true) {
+        return null;
+    }
+
+    if (siguiente >= orden.length) {
+        siguiente = 0;
+    }
+
+    return {
+        ordenTurnos: orden,
+        turnoActual: siguiente,
+        rondaNumero: 1,
+        rondasTerminadas: false
+    };
+}
 
 
     // Terminó el último jugador de la ronda
