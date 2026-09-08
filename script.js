@@ -2655,3 +2655,4 @@ btnOlvidarSesion.addEventListener(
 // ==========================================
 
 actualizarPanelReconexion(); 
+
