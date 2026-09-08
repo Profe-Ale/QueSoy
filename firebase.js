@@ -9,7 +9,8 @@ import {
     onValue,
     push,
     update,
-    remove
+    remove,
+    runTransaction
 }
 from "https://www.gstatic.com/firebasejs/12.8.0/firebase-database.js";
 
@@ -48,5 +49,6 @@ export {
     onValue,
     push,
     update,
-    remove
+    remove,
+    runTransaction
 };
