@@ -638,3 +638,68 @@ body.en-juego .notas-flotante {
     font-size: 0.95rem;
   }
 }
+/* ==========================================
+   NOTAS COMO PANEL EN MODO LIBRE
+   ========================================== */
+
+body.modo-libre .notas-flotante {
+    position: static;
+    display: block;
+
+    width: 100%;
+    max-width: 1000px;
+
+    margin: 30px auto;
+
+    transform: none;
+}
+
+
+/* En modo libre no necesitamos
+   el botón flotante para abrir las notas */
+
+body.modo-libre .notas-toggle {
+    display: none;
+}
+
+
+/* El panel pasa a formar parte de la página */
+
+body.modo-libre .notas-panel {
+    position: static;
+
+    width: 100%;
+    height: auto;
+
+    padding: 20px;
+
+    opacity: 1;
+    visibility: visible;
+
+    transform: none;
+
+    background: #1e1e1e;
+    border: 1px solid #3a3a3a;
+    border-radius: 16px;
+
+    box-sizing: border-box;
+}
+
+
+/* Área donde escribís */
+
+body.modo-libre .notas-panel textarea {
+    width: 100%;
+    min-height: 180px;
+    max-width: none;
+
+    box-sizing: border-box;
+}
+
+
+/* Tampoco necesitamos la X
+   porque el panel queda siempre visible */
+
+body.modo-libre #btnCerrarNotas {
+    display: none;
+}
