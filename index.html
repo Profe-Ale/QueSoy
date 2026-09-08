@@ -248,21 +248,6 @@
         id="grillaNumeros"
         class="grilla"
       ></div>
-      <!-- BLOCK NOTAS -->
-      <div class="panel">
-    <h2>📝 Mis apuntes</h2>
-
-    <textarea
-        id="blocNotas"
-        placeholder="Escribí acá lo que vas descubriendo..."
-        rows="8"
-    ></textarea>
-
-    <button id="btnLimpiarNotas">
-        Limpiar notas
-    </button>
-</div>
-
       <!-- CONTROLES -->
 
       <div class="panel controles-finales">
@@ -291,6 +276,71 @@
   </main>
 
 
+  <!-- ============================= -->
+  <!-- APUNTES (botón flotante + cuadro) -->
+  <!-- ============================= -->
+
+  <!-- Todo el bloque va con position:fixed, así queda
+       siempre a la vista mientras se scrollea.
+       El cuadro de notas se posiciona respecto del botón,
+       o sea que se abre justo donde uno hizo click. -->
+
+  <div id="fondoNotas" class="notas-fondo"></div>
+
+  <div id="notasFlotante" class="notas-flotante">
+
+    <!-- En PC dice "Notas". En celular queda sólo
+         la hamburguesa. Lo decide el CSS. -->
+    <button
+      id="btnAbrirNotas"
+      class="notas-toggle"
+      type="button"
+      aria-controls="panelNotas"
+      aria-expanded="false"
+      aria-label="Abrir mis notas"
+    >
+      <span class="notas-hamburguesa" aria-hidden="true"></span>
+      <span class="notas-toggle-texto">Notas</span>
+    </button>
+
+
+    <aside
+      id="panelNotas"
+      class="notas-panel"
+      aria-label="Mis notas"
+    >
+
+      <div class="notas-encabezado">
+
+        <h2>📝 Mis notas</h2>
+
+        <button
+          id="btnCerrarNotas"
+          class="notas-cerrar"
+          type="button"
+          aria-label="Cerrar notas"
+        >
+          ✕
+        </button>
+
+      </div>
+
+
+      <textarea
+        id="blocNotas"
+        placeholder="Escribí acá lo que vas descubriendo..."
+      ></textarea>
+
+
+      <button id="btnLimpiarNotas">
+        Limpiar notas
+      </button>
+
+    </aside>
+
+  </div>
+
+
   <script
     type="module"
     src="script.js"
@@ -298,4 +348,3 @@
 
 </body>
   </html>
-
