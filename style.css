@@ -238,7 +238,7 @@ button:disabled {
     margin: 16px auto;
   }
 
-  /* Espacio arriba para que la hamburguesa de notas
+  /* Espacio arriba para que el botón de notas
      no se superponga con el título */
   body.en-juego .contenedor {
     padding-top: 52px;
@@ -352,7 +352,7 @@ button:disabled {
 
    PC      -> botón "Notas" pegado al borde izquierdo,
               a media altura. El cuadro sale a su derecha.
-   Celular -> hamburguesa arriba a la izquierda.
+   Celular -> botón cuadrado arriba a la izquierda.
               El cuadro se despliega abajo del botón. */
 
 .notas-flotante {
@@ -389,34 +389,13 @@ body.en-juego .notas-flotante {
   border-color: #666;
 }
 
-/* Las tres rayitas, dibujadas con CSS */
-.notas-hamburguesa {
-  position: relative;
+/* El SVG del bloc de notas. Va con stroke="currentColor",
+   así que hereda el color del botón sin repetirlo acá. */
+.notas-icono {
   display: block;
   flex: none;
-  width: 20px;
-  height: 2px;
-  border-radius: 2px;
-  background: #f1f1f1;
-}
-
-.notas-hamburguesa::before,
-.notas-hamburguesa::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  width: 20px;
-  height: 2px;
-  border-radius: 2px;
-  background: #f1f1f1;
-}
-
-.notas-hamburguesa::before {
-  top: -6px;
-}
-
-.notas-hamburguesa::after {
-  top: 6px;
+  width: 22px;
+  height: 22px;
 }
 
 
@@ -504,9 +483,10 @@ body.en-juego .notas-flotante {
 
   /* El botón está fijo al borde izquierdo. En monitores
      angostos taparía la grilla, así que durante la partida
-     se le reserva lugar a los costados. */
+     se le reserva lugar a los costados. Ahora que la
+     pestaña es angosta alcanza con bastante menos. */
   body.en-juego .contenedor {
-    width: min(1000px, calc(100% - 260px));
+    width: min(1000px, calc(100% - 160px));
   }
 
   .notas-flotante {
@@ -515,15 +495,27 @@ body.en-juego .notas-flotante {
     transform: translateY(-50%);
   }
 
+  /* Pestaña vertical pegada al borde: las rayitas arriba
+     y el texto girado debajo */
   .notas-toggle {
-    padding: 14px 16px 14px 12px;
+    flex-direction: column;
+    gap: 16px;
+    padding: 30px 11px;
     border-left: none;
     border-radius: 0 12px 12px 0;
   }
 
   .notas-toggle-texto {
+    /* gira el texto para que se lea de arriba hacia abajo */
+    writing-mode: vertical-rl;
     font-size: 0.95rem;
     font-weight: bold;
+    /* con writing-mode vertical, el espaciado separa las
+       letras hacia abajo: además de airear, estira la pestaña */
+    letter-spacing: 4px;
+    /* el espaciado también se agrega DESPUÉS de la última
+       letra; esto lo compensa para que quede centrado */
+    margin-bottom: -4px;
   }
 
   /* Se abre a la derecha del botón, centrado con él */
@@ -560,9 +552,15 @@ body.en-juego .notas-flotante {
     justify-content: center;
   }
 
-  /* En celular alcanza con la hamburguesa */
+  /* En celular alcanza con el ícono, y como queda solo
+     en el botón se lo agranda un poco */
   .notas-toggle-texto {
     display: none;
+  }
+
+  .notas-icono {
+    width: 25px;
+    height: 25px;
   }
 
   /* Se despliega justo abajo del botón */
