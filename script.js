@@ -668,8 +668,8 @@ const categorias = {
     secreto: "Tu Pelicula secreta es:",
     grilla: "Peliculas posibles",
     opciones: peliculas
-};
-
+},
+}
 // ==========================================
 // VARIABLES
 // ==========================================
@@ -828,14 +828,8 @@ function cargarNotas() {
 
 function borrarNotasActuales() {
 
-    blocNotas.value = "";,
-    videojuegos: {
-    nombre: "VideoJuegos",
-    titulo: "¿Qué VideoJuego soy?",
-    secreto: "Tu VideoJuego secreto es:",
-    grilla: "VideoJuegos posibles",
-    opciones: videojuegos
-
+    blocNotas.value = ""; 
+    
     claveNotasCargada =
         claveNotasActual();
 
@@ -853,7 +847,6 @@ function borrarNotasActuales() {
         );
     }
 }
-
 
 // Las notas y los tachados de salas viejas quedaban para
 // siempre en localStorage. Al entrar a una sala nos
