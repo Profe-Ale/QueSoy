@@ -2572,6 +2572,36 @@ if (categoriaActual === "libre") {
     contadorRonda.textContent =
         "♾️ Modo libre";
 
+    // ======================================
+// REVELAR EN MODO LIBRE
+// ======================================
+
+if (revelados) {
+
+    const miJugador =
+        jugadores[jugadorActualId];
+
+    contadorRonda.textContent =
+        "✅ Palabras reveladas";
+
+    turnoActualElemento.textContent =
+        "🎉 ¡Tu palabra era!";
+
+    palabraTurno.textContent =
+        miJugador?.elemento || "???";
+
+    mensajeTurno.textContent =
+        "Todos los jugadores ya pueden ver su palabra.";
+
+    btnTerminarTurno.style.display =
+        "none";
+
+    btnForzarTurno.style.display =
+        "none";
+
+    return;
+}
+
     const orden =
         sala.ordenTurnos || [];
 
