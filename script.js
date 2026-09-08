@@ -52,6 +52,9 @@ const btnOlvidarSesion = document.getElementById("btnOlvidarSesion");
 
 const blocNotas = document.getElementById("blocNotas");
 const btnLimpiarNotas = document.getElementById("btnLimpiarNotas");
+const btnAbrirNotas = document.getElementById("btnAbrirNotas");
+const btnCerrarNotas = document.getElementById("btnCerrarNotas");
+const fondoNotas = document.getElementById("fondoNotas");
 
 // ==========================================
 // CATEGORÍAS
@@ -491,6 +494,14 @@ let categoriaActual = "numeros";
 let tachadosLocales = new Set();
 let jugadorTurnoActualId = null;
 
+// Función para cortar la suscripción a la sala.
+// onValue() la devuelve al suscribirse.
+let desuscribirSala = null;
+
+// Última clave de notas que se volcó al textarea.
+// Sirve para no pisar lo que la persona está escribiendo.
+let claveNotasCargada = null;
+
 const CLAVE_SESION =
     "queSoySesionActual";
 
@@ -595,13 +606,94 @@ function claveNotasActual() {
 
 function cargarNotas() {
 
-    const guardadas =
-        localStorage.getItem(
+    const clave = claveNotasActual();
+
+    // cargarPartida() corre con CADA actualización de Firebase
+    // (cada turno, cada jugador que entra, etc.).
+    // Si reescribiéramos el textarea todas esas veces, el cursor
+    // saltaría al final mientras la persona está escribiendo.
+    // Sólo hay que volcar las notas cuando cambia la sala/jugador.
+    if (clave === claveNotasCargada) {
+        return;
+    }
+
+    claveNotasCargada = clave;
+
+    try {
+
+        blocNotas.value =
+            localStorage.getItem(clave) || "";
+
+    } catch (error) {
+
+        console.warn(
+            "No se pudieron leer las notas:",
+            error
+        );
+
+        blocNotas.value = "";
+    }
+}
+
+
+function borrarNotasActuales() {
+
+    blocNotas.value = "";
+
+    claveNotasCargada =
+        claveNotasActual();
+
+    try {
+
+        localStorage.removeItem(
             claveNotasActual()
         );
 
-    blocNotas.value =
-        guardadas || "";
+    } catch (error) {
+
+        console.warn(
+            "No se pudieron borrar las notas:",
+            error
+        );
+    }
+}
+
+
+// Las notas de salas viejas quedaban para siempre en localStorage.
+// Al entrar a una sala nos quedamos sólo con las de esa sala.
+function limpiarNotasDeOtrasSalas() {
+
+    try {
+
+        const prefijoActual =
+            `notas_${codigoActual}_`;
+
+        const aBorrar = [];
+
+        for (let i = 0; i < localStorage.length; i++) {
+
+            const clave = localStorage.key(i);
+
+            if (
+                clave &&
+                clave.startsWith("notas_") &&
+                !clave.startsWith(prefijoActual)
+            ) {
+                aBorrar.push(clave);
+            }
+        }
+
+        aBorrar.forEach(clave => {
+            localStorage.removeItem(clave);
+        });
+
+    } catch (error) {
+
+        console.warn(
+            "No se pudieron limpiar notas viejas:",
+            error
+        );
+    }
 }
 
 
@@ -616,10 +708,23 @@ blocNotas.addEventListener(
             return;
         }
 
-        localStorage.setItem(
-            claveNotasActual(),
-            blocNotas.value
-        );
+        try {
+
+            localStorage.setItem(
+                claveNotasActual(),
+                blocNotas.value
+            );
+
+            claveNotasCargada =
+                claveNotasActual();
+
+        } catch (error) {
+
+            console.warn(
+                "No se pudieron guardar las notas:",
+                error
+            );
+        }
     }
 );
 
@@ -628,11 +733,102 @@ btnLimpiarNotas.addEventListener(
     "click",
     () => {
 
-        blocNotas.value = "";
+        if (
+            !codigoActual ||
+            !jugadorActualId
+        ) {
+            blocNotas.value = "";
+            return;
+        }
 
-        localStorage.removeItem(
-            claveNotasActual()
-        );
+        borrarNotasActuales();
+
+        // Después de limpiar se sigue escribiendo ahí
+        blocNotas.focus();
+    }
+);
+
+
+// ==========================================
+// ABRIR Y CERRAR EL CUADRO DE NOTAS
+// ==========================================
+
+function notasEstanAbiertas() {
+
+    return document.body.classList.contains(
+        "notas-abiertas"
+    );
+}
+
+
+function abrirNotas() {
+
+    document.body.classList.add(
+        "notas-abiertas"
+    );
+
+    btnAbrirNotas.setAttribute(
+        "aria-expanded",
+        "true"
+    );
+
+    // Que se pueda escribir de una, sin tener
+    // que tocar el textarea aparte
+    blocNotas.focus();
+}
+
+
+function cerrarNotas() {
+
+    document.body.classList.remove(
+        "notas-abiertas"
+    );
+
+    btnAbrirNotas.setAttribute(
+        "aria-expanded",
+        "false"
+    );
+}
+
+
+btnAbrirNotas.addEventListener(
+    "click",
+    () => {
+
+        if (notasEstanAbiertas()) {
+            cerrarNotas();
+        } else {
+            abrirNotas();
+        }
+    }
+);
+
+
+btnCerrarNotas.addEventListener(
+    "click",
+    cerrarNotas
+);
+
+
+// En celular el fondo oscuro cierra al tocarlo.
+// En PC ese fondo no se muestra, así que se puede
+// seguir tachando la grilla con las notas abiertas.
+fondoNotas.addEventListener(
+    "click",
+    cerrarNotas
+);
+
+
+document.addEventListener(
+    "keydown",
+    evento => {
+
+        if (
+            evento.key === "Escape" &&
+            notasEstanAbiertas()
+        ) {
+            cerrarNotas();
+        }
     }
 );
 
@@ -646,6 +842,15 @@ function cambiarPantalla(pantalla) {
     });
 
     pantalla.classList.add("activa");
+
+    // El botón de notas sólo tiene sentido durante la partida
+    const enJuego = pantalla === pantallaJuego;
+
+    document.body.classList.toggle("en-juego", enJuego);
+
+    if (!enJuego) {
+        cerrarNotas();
+    }
 }
 
 function generarCodigoSala() {
@@ -953,10 +1158,27 @@ selectorCategoria.addEventListener("change", async () => {
 // ESCUCHAR FIREBASE
 // ==========================================
 
+function dejarDeEscucharSala() {
+
+    if (desuscribirSala) {
+        desuscribirSala();
+        desuscribirSala = null;
+    }
+}
+
+
 function escucharSala() {
+
+    // Si ya estábamos escuchando otra sala (o la misma), cortamos.
+    // Antes se acumulaba un listener por cada vez que se entraba
+    // o se reconectaba, y todos peleaban por la misma pantalla.
+    dejarDeEscucharSala();
+
+    limpiarNotasDeOtrasSalas();
+
     const salaRef = ref(database, `salas/${codigoActual}`);
 
-    onValue(salaRef, snapshot => {
+    desuscribirSala = onValue(salaRef, snapshot => {
         if (!snapshot.exists()) {
             alert("La sala ya no existe.");
             return;
@@ -965,32 +1187,42 @@ function escucharSala() {
         const sala = snapshot.val();
 
         jugadores = sala.jugadores || {};
+
         // ======================================
-// COMPROBAR SI ME EXPULSARON
-// ======================================
+        // COMPROBAR SI ME EXPULSARON
+        // ======================================
 
-if (
-    jugadorActualId &&
-    !jugadores[jugadorActualId]
-) {
+        if (
+            jugadorActualId &&
+            !jugadores[jugadorActualId]
+        ) {
 
-    borrarSesion();
+            // Cortamos la suscripción ANTES de nada.
+            // Si no, las siguientes actualizaciones de esa sala
+            // nos devolvían al lobby del que nos acababan de echar.
+            dejarDeEscucharSala();
 
-    alert(
-        "Fuiste expulsado de la sala por el anfitrión."
-    );
+            borrarSesion();
 
-    codigoActual = "";
-    jugadorActualId = null;
+            codigoActual = "";
+            jugadorActualId = null;
+            rondaActual = null;
+            claveNotasCargada = null;
+            tachadosLocales.clear();
 
-    cambiarPantalla(
-        pantallaInicio
-    );
+            cambiarPantalla(
+                pantallaInicio
+            );
 
-    actualizarPanelReconexion();
+            actualizarPanelReconexion();
 
-    return;
-}
+            alert(
+                "Fuiste expulsado de la sala por el anfitrión."
+            );
+
+            return;
+        }
+
         categoriaActual = sala.categoria || "numeros";
 
         if (sala.estado === "esperando") {
@@ -1214,12 +1446,14 @@ async function iniciarPartidaFirebase() {
         await update(salaRef, cambios);
 
     } catch (error) {
-    console.error("ERROR COMPLETO AL INICIAR:", error);
 
-    alert(
-        "Error al iniciar: " +
-        (error?.message || String(error))
-    );
+        console.error("ERROR COMPLETO AL INICIAR:", error);
+
+        alert(
+            "Error al iniciar: " +
+            (error?.message || String(error))
+        );
+    }
 }
 
 btnIniciarPartida.addEventListener("click", iniciarPartidaFirebase);
@@ -1245,10 +1479,22 @@ function cargarPartida(sala) {
 
     if (rondaActual !== sala.ronda) {
 
+        // Si rondaActual era null, esto es la primera carga
+        // de la página (o una reconexión): la partida es la
+        // misma, así que las notas hay que conservarlas.
+        const esPartidaNueva =
+            rondaActual !== null;
+
         rondaActual =
             sala.ronda;
 
         tachadosLocales.clear();
+
+        if (esPartidaNueva) {
+            // Los elementos cambiaron: las notas de la
+            // partida anterior ya no sirven para nada.
+            borrarNotasActuales();
+        }
     }
 
 
@@ -1303,6 +1549,14 @@ function cargarPartida(sala) {
 
 function mostrarGrilla() {
     grillaNumeros.innerHTML = "";
+
+    // Los números entran en celdas chicas; los nombres
+    // de objetos, animales, profesiones o videojuegos
+    // necesitan celdas más anchas (lo resuelve el CSS).
+    grillaNumeros.classList.toggle(
+        "grilla-palabras",
+        categoriaActual !== "numeros"
+    );
 
     const opcionesOrdenadas =
         categoriaActual === "numeros"
@@ -1614,9 +1868,15 @@ function mostrarTurnoActual(sala) {
         jugadores[idTurno];
 
 
-    // Si por algún motivo el jugador
-    // todavía no se cargó
+    // El jugador de este turno ya no está en la sala:
+    // cerró la pestaña o el anfitrión lo expulsó.
+    // El anfitrión TIENE que poder forzar el siguiente turno,
+    // si no la partida queda trabada para siempre.
     if (!jugador) {
+
+        const soyAnfitrionSinJugador =
+            sala.anfitrionId ===
+            jugadorActualId;
 
         turnoActualElemento.textContent =
             "Esperando...";
@@ -1625,13 +1885,17 @@ function mostrarTurnoActual(sala) {
             "???";
 
         mensajeTurno.textContent =
-            "";
+            soyAnfitrionSinJugador
+                ? "El jugador de este turno ya no está en la sala. Forzá el siguiente turno para seguir."
+                : "El jugador de este turno ya no está en la sala. Esperando al anfitrión...";
 
         btnTerminarTurno.style.display =
             "none";
 
         btnForzarTurno.style.display =
-            "none";
+            soyAnfitrionSinJugador && !revelados
+                ? "inline-block"
+                : "none";
 
         return;
     }
@@ -1759,6 +2023,110 @@ if (revelados) {
             ? "inline-block"
             : "none";
 }
+// ==========================================
+// AVANCE DE TURNO (lógica compartida)
+// ==========================================
+
+// Devuelve los cambios a escribir en Firebase para pasar
+// al siguiente turno, o null si no hay nada que hacer.
+//
+// De paso saca del orden a los jugadores que ya no están
+// en la sala, así el anfitrión no tiene que forzar el mismo
+// turno vacío una vez por ronda.
+function calcularSiguienteTurno(sala) {
+
+    const jugadoresSala =
+        sala.jugadores || {};
+
+    const ordenOriginal =
+        sala.ordenTurnos || [];
+
+    const indice =
+        sala.turnoActual ?? 0;
+
+
+    if (ordenOriginal.length === 0) {
+        return null;
+    }
+
+
+    const orden =
+        ordenOriginal.filter(
+            id => jugadoresSala[id]
+        );
+
+
+    if (orden.length === 0) {
+        return null;
+    }
+
+
+    // Dónde cae el turno actual dentro del orden ya limpio
+    let posicion =
+        orden.indexOf(
+            ordenOriginal[indice]
+        );
+
+
+    if (posicion === -1) {
+
+        // El jugador del turno se fue de la sala.
+        // Nos paramos en el último que SÍ sigue estando
+        // antes que él, para no saltear a nadie.
+        for (
+            let i = 0;
+            i < indice && i < ordenOriginal.length;
+            i++
+        ) {
+
+            const anterior =
+                orden.indexOf(ordenOriginal[i]);
+
+            if (anterior !== -1) {
+                posicion = anterior;
+            }
+        }
+    }
+
+
+    let siguiente = posicion + 1;
+
+    let rondaNumero =
+        sala.rondaNumero || 1;
+
+    let rondasTerminadas = false;
+
+
+    // Terminó el último jugador de la ronda
+    if (siguiente >= orden.length) {
+
+        // La ronda 6 es la de arriesgar: ahí se acaba
+        if (rondaNumero >= 6) {
+
+            rondasTerminadas = true;
+
+            // Dejamos el índice en el último jugador
+            siguiente = orden.length - 1;
+
+        } else {
+
+            // Volvemos al primero y pasamos de ronda
+            siguiente = 0;
+
+            rondaNumero++;
+        }
+    }
+
+
+    return {
+        ordenTurnos: orden,
+        turnoActual: siguiente,
+        rondaNumero: rondaNumero,
+        rondasTerminadas: rondasTerminadas
+    };
+}
+
+
     btnTerminarTurno.addEventListener(
         "click",
             async () => {
@@ -1809,44 +2177,14 @@ if (revelados) {
             }
 
 
-            let siguiente = indice + 1;
+            const cambios =
+                calcularSiguienteTurno(sala);
 
-let rondaNumero =
-    sala.rondaNumero || 1;
+            if (!cambios) {
+                return;
+            }
 
-let rondasTerminadas = false;
-
-
-// Si terminó el último jugador
-if (siguiente >= orden.length) {
-
-    // Si acaba de terminar la ronda 5
-    if (rondaNumero >= 6) {
-
-        rondasTerminadas = true;
-
-        // Dejamos el índice en el último jugador
-        siguiente = indice;
-
-    } else {
-
-        // Volvemos al primer jugador
-        siguiente = 0;
-
-        // Pasamos a la siguiente ronda
-        rondaNumero++;
-    }
-}
-
-
-        await update(
-            salaRef,
-     {
-        turnoActual: siguiente,
-        rondaNumero: rondaNumero,
-        rondasTerminadas: rondasTerminadas
-    }
-);
+            await update(salaRef, cambios);
 
         } catch (error) {
 
@@ -1893,51 +2231,14 @@ btnForzarTurno.addEventListener(
             }
 
 
-            const orden =
-                sala.ordenTurnos || [];
+            const cambios =
+                calcularSiguienteTurno(sala);
 
-            const indice =
-                sala.turnoActual || 0;
-
-
-            if (orden.length === 0) {
+            if (!cambios) {
                 return;
             }
 
-
-           let siguiente = indice + 1;
-
-            let rondaNumero =
-            sala.rondaNumero || 1;
-
-            let rondasTerminadas = false;
-
-
-            if (siguiente >= orden.length) {
-    
-            if (rondaNumero >= 6) {
-
-            rondasTerminadas = true;
-
-            siguiente = indice;
-
-            } else {
-
-            siguiente = 0;
-
-            rondaNumero++;
-    }
-}
-
-
-await update(
-    salaRef,
-    {
-        turnoActual: siguiente,
-        rondaNumero: rondaNumero,
-        rondasTerminadas: rondasTerminadas
-    }
-);
+            await update(salaRef, cambios);
 
         } catch (error) {
 
