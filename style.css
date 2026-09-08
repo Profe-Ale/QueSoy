@@ -8,6 +8,8 @@ body {
   background: #121212;
   color: #f1f1f1;
   min-height: 100vh;
+  /* dvh tiene en cuenta la barra del navegador en celular */
+  min-height: 100dvh;
 }
 
 .contenedor {
@@ -43,28 +45,39 @@ h1 {
 }
 
 input,
-select {
+select,
+textarea {
   display: block;
   width: min(400px, 100%);
   margin: 12px auto;
   padding: 14px;
   font-size: 1rem;
+  font-family: inherit;
   background: #292929;
   color: white;
   border: 2px solid #444;
   border-radius: 10px;
 }
 
+textarea {
+  width: min(600px, 100%);
+  resize: vertical;
+  line-height: 1.5;
+  text-align: left;
+}
+
 select {
   cursor: pointer;
 }
 
-input::placeholder {
+input::placeholder,
+textarea::placeholder {
   color: #999;
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: none;
   border-color: #888;
 }
@@ -128,9 +141,19 @@ button:disabled {
 
 .grilla {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  /* auto-fill se adapta solo al ancho: no hacen falta
+     media queries para cambiar la cantidad de columnas */
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  /* 1fr iguala la altura de TODAS las filas a la más alta */
+  grid-auto-rows: 1fr;
   gap: 10px;
   margin: 20px 0;
+}
+
+/* Categorías de palabras: celdas más anchas y letra más
+   chica, para que entren nombres largos sin partirse */
+.grilla.grilla-palabras {
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
 }
 
 .numero {
@@ -143,13 +166,28 @@ button:disabled {
   text-align: center;
   font-size: 1rem;
   font-weight: bold;
+  line-height: 1.25;
   cursor: pointer;
   user-select: none;
   transition: 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow-wrap: anywhere;
+  /* break-word corta primero por los espacios y sólo parte
+     una palabra si por sí sola no entra.
+     Con "anywhere" se cortaba a mitad de palabra siempre
+     (Bloodbo/rne, Cyberpu/nk, Overwat/ch). */
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
+  /* reparte las líneas de forma pareja en vez de dejar
+     una sola letra colgando en el último renglón */
+  text-wrap: balance;
+}
+
+.grilla-palabras .numero {
+  font-size: 0.85rem;
+  padding: 12px 6px;
 }
 
 .numero:hover {
@@ -184,25 +222,93 @@ button:disabled {
   transform: scale(0.96);
 }
 
-@media (min-width: 850px) {
-  .grilla {
-    grid-template-columns: repeat(10, minmax(0, 1fr));
-  }
-}
+/* La grilla ya no necesita media queries para las columnas:
+   auto-fill + minmax se encarga solo en cualquier ancho. */
 
 @media (max-width: 700px) {
+
+  /* En celular el 92% de ancho con 30px de margen
+     arriba desperdiciaba mucho espacio de pantalla */
+  .contenedor {
+    width: 94%;
+    margin: 16px auto;
+  }
+
+  /* Espacio arriba para que la hamburguesa de notas
+     no se superponga con el título */
+  body.en-juego .contenedor {
+    padding-top: 52px;
+  }
+
   h1 {
     font-size: 2rem;
+    margin: 12px 0;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  .panel {
+    padding: 16px 14px;
+    margin: 14px 0;
+    border-radius: 14px;
+  }
+
+  input,
+  select,
+  textarea {
+    margin: 10px auto;
+    padding: 12px;
+  }
+
+  /* Botones de panel a lo ancho: más fáciles de tocar.
+     No afecta al de "Expulsar", que está más adentro. */
+  .panel > button {
+    width: 100%;
+    margin: 8px 0 0;
+    padding: 14px 16px;
   }
 
   .codigo-sala {
     font-size: 2rem;
+    letter-spacing: 5px;
+  }
+
+  .jugador {
+    padding: 11px 12px;
+    gap: 10px;
+  }
+
+  .jugador button {
+    margin: 0;
+    padding: 9px 14px;
+    font-size: 0.9rem;
+  }
+
+  .turno-actual {
+    font-size: 1.3rem;
+  }
+
+  .controles-finales {
+    margin-top: 20px;
   }
 
   .grilla {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 14px 0;
+  }
+
+  .grilla.grilla-palabras {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+
+  .numero {
+    min-height: 52px;
+    padding: 10px 6px;
   }
 }
+
 .panel-turno {
   border: 2px solid #444;
 }
@@ -221,9 +327,264 @@ button:disabled {
   transform: scale(1.02);
 }
 .palabra-turno {
-  font-size: 3rem;
+  /* fluido: los títulos largos (por ejemplo
+     "Dragon Ball Z: Budokai Tenkaichi 3") no entran a 3rem */
+  font-size: clamp(1.5rem, 5.5vw, 3rem);
   font-weight: bold;
+  line-height: 1.15;
   margin: 18px 0;
   text-align: center;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
+  text-wrap: balance;
 }
+/* ==========================================
+   NOTAS: BOTÓN FLOTANTE + CUADRO
+   ==========================================
+   El bloque entero es position:fixed, así que
+   acompaña el scroll y siempre queda a la vista.
+   El cuadro se posiciona respecto del botón, o sea
+   que se abre justo donde se hizo click.
+
+   PC      -> botón "Notas" pegado al borde izquierdo,
+              a media altura. El cuadro sale a su derecha.
+   Celular -> hamburguesa arriba a la izquierda.
+              El cuadro se despliega abajo del botón. */
+
+.notas-flotante {
+  position: fixed;
+  z-index: 40;
+  display: none;
+}
+
+/* Sólo aparece durante la partida */
+body.en-juego .notas-flotante {
+  display: block;
+}
+
+
+/* ---------- BOTÓN ---------- */
+
+.notas-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.notas-toggle:hover {
+  background: #383838;
+  transform: none;
+}
+
+.notas-toggle[aria-expanded="true"] {
+  background: #3a3a3a;
+  border-color: #666;
+}
+
+/* Las tres rayitas, dibujadas con CSS */
+.notas-hamburguesa {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 20px;
+  height: 2px;
+  border-radius: 2px;
+  background: #f1f1f1;
+}
+
+.notas-hamburguesa::before,
+.notas-hamburguesa::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 20px;
+  height: 2px;
+  border-radius: 2px;
+  background: #f1f1f1;
+}
+
+.notas-hamburguesa::before {
+  top: -6px;
+}
+
+.notas-hamburguesa::after {
+  top: 6px;
+}
+
+
+/* ---------- CUADRO DE NOTAS ---------- */
+
+.notas-panel {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: #1e1e1e;
+  border: 1px solid #3a3a3a;
+  border-radius: 14px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    visibility 0.18s;
+}
+
+.notas-encabezado {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.notas-encabezado h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  text-align: left;
+}
+
+.notas-cerrar {
+  flex: none;
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 1.1rem;
+  line-height: 1;
+  background: transparent;
+}
+
+/* Pisa el ancho fijo de la regla general de inputs */
+.notas-panel textarea {
+  flex: 1;
+  width: 100%;
+  max-width: none;
+  min-height: 120px;
+  margin: 0;
+  padding: 10px;
+  resize: none;
+}
+
+.notas-panel > button {
+  flex: none;
+  width: 100%;
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+}
+
+
+/* ---------- FONDO (sólo celular) ---------- */
+
+.notas-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.18s ease,
+    visibility 0.18s;
+}
+
+
+/* ---------- PC ---------- */
+
+@media (min-width: 701px) {
+
+  /* El botón está fijo al borde izquierdo. En monitores
+     angostos taparía la grilla, así que durante la partida
+     se le reserva lugar a los costados. */
+  body.en-juego .contenedor {
+    width: min(1000px, calc(100% - 260px));
+  }
+
+  .notas-flotante {
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .notas-toggle {
+    padding: 14px 16px 14px 12px;
+    border-left: none;
+    border-radius: 0 12px 12px 0;
+  }
+
+  .notas-toggle-texto {
+    font-size: 0.95rem;
+    font-weight: bold;
+  }
+
+  /* Se abre a la derecha del botón, centrado con él */
+  .notas-panel {
+    left: calc(100% + 10px);
+    top: 50%;
+    width: min(340px, calc(100vw - 90px));
+    height: min(360px, calc(100dvh - 40px));
+    transform: translateY(-50%) scale(0.96);
+    transform-origin: left center;
+  }
+
+  body.notas-abiertas .notas-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+
+/* ---------- CELULAR ---------- */
+
+@media (max-width: 700px) {
+  .notas-flotante {
+    left: 12px;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+  }
+
+  .notas-toggle {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border-radius: 12px;
+    justify-content: center;
+  }
+
+  /* En celular alcanza con la hamburguesa */
+  .notas-toggle-texto {
+    display: none;
+  }
+
+  /* Se despliega justo abajo del botón */
+  .notas-panel {
+    left: 0;
+    top: calc(100% + 10px);
+    width: calc(100vw - 24px);
+    height: min(58dvh, 380px);
+    transform: translateY(-8px) scale(0.98);
+    transform-origin: top left;
+  }
+
+  body.notas-abiertas .notas-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+  }
+
+  body.notas-abiertas .notas-fondo {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Que no se scrollee el fondo con las notas abiertas */
+  body.notas-abiertas {
+    overflow: hidden;
+  }
+}
+
